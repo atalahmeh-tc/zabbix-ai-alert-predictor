@@ -16,8 +16,8 @@ project_root = os.path.dirname(script_dir)
 data_file = os.path.join(project_root, "data", "zabbix_like_data_with_anomalies.csv")
 data = pd.read_csv(data_file)
 
-# Function to create a GPT prompt based on the latest N records
-def create_gpt_prompt(data, n=5):
+# Function to create a AI prompt based on the latest N records
+def create_prompt(data, n=5):
     # Take the last 'n' rows of data
     latest_data = data.tail(n)
     
@@ -49,8 +49,8 @@ def get_prediction(prompt):
 
 # Main function to make predictions
 def main():
-    # Create the prompt for GPT
-    prompt = create_gpt_prompt(data)
+    # Create the prompt for AI
+    prompt = create_prompt(data)
 
     print("Generated Prompt:")
     print(prompt)

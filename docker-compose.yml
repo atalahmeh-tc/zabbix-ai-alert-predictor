@@ -12,7 +12,17 @@ services:
     volumes:
       - .:/app
     depends_on:
+      - db
       - ollama
+
+  db:
+    image: alpine:3.18
+    container_name: zabbix_ai_db
+    restart: unless-stopped
+    command: ["/bin/sh", "/init-db.sh"]
+    volumes:
+      - db_data:/db
+      - ./init-db.sh:/init-db.sh:ro
 
   ollama:
     image: ollama/ollama
@@ -20,12 +30,20 @@ services:
     restart: unless-stopped
     ports:
       - "11434:11434"
-    expose:
-      - "11434"
     volumes:
-      - ollama:/root/.ollama
-    environment:
-      - OLLAMA_MODELS=llama3
+      - models:/root/.ollama
+
 
 volumes:
-  ollama:
+  models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./models
+  db_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./db

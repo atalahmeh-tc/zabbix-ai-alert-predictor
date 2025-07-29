@@ -29,11 +29,10 @@ build:
 	docker-compose build
 
 # Start all containers
-up:
+up: down
 	docker-compose up -d
 	@echo "Containers started. Waiting for Ollama to be ready..."
 	@sleep 10
-	@echo "Installing llama3.2 model..."
 	@make install-model
 
 # Stop and remove containers
@@ -58,7 +57,7 @@ logs-ollama:
 
 # Show logs from Streamlit app container
 logs-app:
-	docker-compose logs -f streamlit
+	docker-compose logs -f app
 
 # Clean up everything
 clean:
@@ -67,11 +66,16 @@ clean:
 
 # Install and setup the model
 install-model:
-	@echo "Installing llama3.2 model in Ollama container..."
-	@docker exec ollama ollama pull llama3.2 || echo "Failed to pull model, container might not be ready yet"
-	@sleep 5
+	@echo "Checking if llama3.2 model is already installed in Ollama container..."
+	@if docker exec zabbix_ai_ollama ollama list | grep -q 'llama3.2'; then \
+		echo "llama3.2 model already installed."; \
+	else \
+		echo "Installing llama3.2 model..."; \
+		docker exec -it zabbix_ai_ollama ollama pull llama3.2 || echo "Model pull failed"; \
+		sleep 5; \
+	fi
 	@echo "Verifying model installation..."
-	@docker exec ollama ollama list
+	@docker exec zabbix_ai_ollama ollama list
 
 # Test Ollama API connection
 test-ollama-api:
@@ -88,11 +92,11 @@ test-ollama:
 
 # Open shell in Ollama container
 shell-ollama:
-	docker exec -it ollama /bin/bash
+	docker exec -it zabbix_ai_ollama /bin/bash
 
 # Open shell in Streamlit app container
 shell-app:
-	docker exec -it $$(docker-compose ps -q streamlit) /bin/bash
+	docker exec -it zabbix_ai_app /bin/bash
 
 # Quick start - build and run everything
 start: build up

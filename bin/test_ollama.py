@@ -2,9 +2,15 @@
 """
 Test script to verify Ollama API connectivity and model availability
 """
-import requests
-import json
 import os
+import sys
+import json
+import requests
+import pandas as pd
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.predictor import create_prompt, get_prediction
 
 # Get Ollama host from environment variable, default to localhost for testing
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
@@ -58,15 +64,10 @@ def test_model_generation(model_name="llama3.2"):
 def test_prediction_function():
     """Test the actual prediction function from the project"""
     try:
-        import sys
-        import os
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from src.predictor import create_gpt_prompt, get_prediction
-        import pandas as pd
-        
         # Create some sample data
         sample_data = pd.DataFrame({
             'Timestamp': ['2025-01-29 10:00:00', '2025-01-29 10:01:00', '2025-01-29 10:02:00'],
+            'Host': ['host1', 'host1', 'host1'],
             'CPU User': [45.2, 67.8, 89.1],
             'CPU System': [12.3, 15.7, 23.4],
             'Disk Used': [78.5, 79.2, 80.1],
@@ -75,7 +76,7 @@ def test_prediction_function():
         })
         
         print("Testing prediction function with sample data...")
-        prompt = create_gpt_prompt(sample_data)
+        prompt = create_prompt(sample_data)
         print(f"Generated prompt:\n{prompt}")
         
         prediction = get_prediction(prompt)

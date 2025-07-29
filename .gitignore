@@ -252,3 +252,6 @@ config.local.ini
 
 # OS generated files
 .Trash-*
+
+# LLM Models
+models/

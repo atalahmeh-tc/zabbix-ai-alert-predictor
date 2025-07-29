@@ -1,14 +1,18 @@
+import os
 import csv
 import random
 from datetime import datetime, timedelta
 
-# Configurable parameters
-hosts = ["host-01", "host-02", "host-03"]
+# Configurable parameters - Scale up to 500,000+ data points
+hosts = ["host-{:02d}".format(i) for i in range(1, 21)]  # 20 hosts
 interval_minutes = 5
-days = 2  # Simulate for 2 days
+days = 365  # Simulate for 1 year
 start_time = datetime.now() - timedelta(days=days)
 points_per_host = (24 * 60 // interval_minutes) * days
 rows_count = 0
+
+print(f"Generating data for {len(hosts)} hosts over {days} days...")
+print(f"Total data points: {len(hosts) * points_per_host:,} (Target: 500,000+)")
 
 # Function to inject anomalies
 def get_anomaly_indexes():
@@ -56,7 +60,6 @@ def generate_row(timestamp, host, index, rows_count):
 
 # Generate synthetic data and write to CSV
 def generate_data():
-    import os
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(os.path.dirname(script_dir), "data")
     os.makedirs(data_dir, exist_ok=True)

@@ -1,35 +1,23 @@
-import sqlite3
-from datetime import datetime
 import os
+import sqlite3
 
 # Get the absolute path to the database file
-db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'predictions.db')
+db_path = os.path.join(os.path.dirname(__file__), '..', 'db', 'predictions.db')
 
-# Set up the SQLite database (if it doesn't exist)
-def create_db():
+
+# Function to insert a new prediction using a parsed dictionary
+def insert_prediction(parsed_prediction: dict):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS predictions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            prediction TEXT,
-            explanation TEXT
-        )
-    ''')
+    # Extract additional fields from parsed_prediction dict
+    keys = parsed_prediction.keys()
+    values = parsed_prediction.values()
+    sql = f"INSERT INTO predictions ({', '.join(keys)}) VALUES ({', '.join(['?'] * len(values))})"
+    c.execute(sql, tuple(values))
+    prediction_id = c.lastrowid
     conn.commit()
     conn.close()
-
-# Function to insert a new prediction
-def insert_prediction(prediction, explanation):
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute('''
-        INSERT INTO predictions (timestamp, prediction, explanation)
-        VALUES (?, ?, ?)
-    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), prediction, explanation))
-    conn.commit()
-    conn.close()
+    return prediction_id
 
 # Function to fetch all stored predictions
 def fetch_predictions():
@@ -39,3 +27,4 @@ def fetch_predictions():
     rows = c.fetchall()
     conn.close()
     return rows
+
