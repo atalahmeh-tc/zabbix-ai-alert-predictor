@@ -54,7 +54,7 @@ docker exec ollama ollama pull llama3.2
 
 | Component            | Technology                       |
 | -------------------- | -------------------------------- |
-| **AI/ML**            | Ollama (Llama 3.2)               |
+| **AI/ML**            | Ollama (E.g. llama3.2:3b)        |
 | **Backend**          | Python, Streamlit                |
 | **Data Generation**  | Python (`bin/data_generator.py`) |
 | **Database**         | SQLite (`predictions.db`)        |
@@ -151,7 +151,7 @@ make status          # Show status of all containers
 make logs-ollama     # View logs from Ollama container only
 make logs-app        # View logs from Streamlit app container only
 make clean           # Remove containers, networks, and volumes
-make install-model   # Install and setup the llama3.2 model
+make install-model   # Install and setup the Ollama model
 make test-ollama-api # Test Ollama API connection with curl
 make test-ollama     # Run comprehensive Ollama test script
 make shell-ollama    # Open shell in Ollama container
@@ -219,7 +219,7 @@ Create a `.env` file for local configuration:
 ```bash
 # Ollama Configuration
 OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=llama3.2:3b
 
 # Database
 DATABASE_PATH=predictions.db

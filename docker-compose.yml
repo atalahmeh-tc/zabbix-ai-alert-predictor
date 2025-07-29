@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       - OLLAMA_HOST=http://zabbix_ai_ollama:11434
-      - OLLAMA_MODEL=llama3.2
+      - OLLAMA_MODEL=llama3.2:3b
     ports:
       - "8501:8501"
     volumes:
@@ -31,16 +31,16 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - models:/root/.ollama
+      - ollama:/root/.ollama
 
 
 volumes:
-  models:
+  ollama:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ./models
+      device: ./ollama
   db_data:
     driver: local
     driver_opts:

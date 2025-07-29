@@ -1,4 +1,5 @@
 export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=llama3.2:3b
 
 # Makefile for Zabbix AI Alert Predictor
 
@@ -16,7 +17,7 @@ help:
 	@echo "  logs-ollama 		- Show logs from Ollama container only"
 	@echo "  logs-app    		- Show logs from Streamlit app container only"
 	@echo "  clean       		- Remove containers, networks, and volumes"
-	@echo "  install-model 		- Install and setup the llama3.2 model"
+	@echo "  install-model 		- Install and setup the Ollama model"
 	@echo "  test-ollama-api 	- Test Ollama API connection"
 	@echo "  test-ollama 		- Run comprehensive Ollama test script"
 	@echo "  shell-ollama 		- Open shell in Ollama container"
@@ -66,12 +67,12 @@ clean:
 
 # Install and setup the model
 install-model:
-	@echo "Checking if llama3.2 model is already installed in Ollama container..."
-	@if docker exec zabbix_ai_ollama ollama list | grep -q 'llama3.2'; then \
-		echo "llama3.2 model already installed."; \
+	@echo "Checking if ollama model is already installed in Ollama container..."
+	@if docker exec zabbix_ai_ollama ollama list | grep -q '$(OLLAMA_MODEL)'; then \
+		echo "$(OLLAMA_MODEL) model already installed."; \
 	else \
-		echo "Installing llama3.2 model..."; \
-		docker exec -it zabbix_ai_ollama ollama pull llama3.2 || echo "Model pull failed"; \
+		echo "Installing $(OLLAMA_MODEL) model..."; \
+		docker exec -it zabbix_ai_ollama ollama pull $(OLLAMA_MODEL) || echo "Model pull failed"; \
 		sleep 5; \
 	fi
 	@echo "Verifying model installation..."
@@ -82,7 +83,7 @@ test-ollama-api:
 	@echo "Testing Ollama API connection..."
 	@curl -s -X POST http://localhost:11434/api/generate \
 		-H "Content-Type: application/json" \
-		-d '{"model": "llama3.2", "prompt": "Hello, world!", "stream": false}' \
+		-d '{"model": "$(OLLAMA_MODEL)", "prompt": "Hello, world!", "stream": false}' \
 		| jq -r '.response // .error' || echo "API test failed or jq not available"
 
 # Test using Python test script

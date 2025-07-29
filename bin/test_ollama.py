@@ -31,7 +31,7 @@ def test_ollama_connection():
         print(f"❌ Failed to connect to Ollama API: {e}")
         return None
 
-def test_model_generation(model_name="llama3.2"):
+def test_model_generation(model_name):
     """Test model generation with a simple prompt"""
     try:
         payload = {

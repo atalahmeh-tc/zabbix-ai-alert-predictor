@@ -254,4 +254,4 @@ config.local.ini
 .Trash-*
 
 # LLM Models
-models/
+ollama/

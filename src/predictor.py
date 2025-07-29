@@ -4,7 +4,7 @@ import requests
 
 # Get Ollama host from environment variable, default to Docker service name
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", None)
 
 # Function to create a prompt for the AI model
 def create_prompt(data, n=3):
@@ -44,7 +44,7 @@ Use the following format (as a JSON array):
 [
   {{
     "host": "<host-name>",
-    "metric": "<CPU User / CPU System / Disk Used / Net In / Net Out>",
+    "metric": "<CPU User | CPU System | Disk Used | Net In | Net Out>",
     "current_value": <float>,
     "predicted_value": <float>,
     "time_to_reach_threshold": "<e.g. 4 hours or N/A>",
@@ -71,7 +71,7 @@ Recent metrics:
     return prompt
 
 # Function to get prediction from local Ollama
-def get_prediction(prompt, model="llama3.2"):
+def get_prediction(prompt, model=OLLAMA_MODEL):
     try:
         response = requests.post(
             f"{OLLAMA_HOST}/api/generate",
