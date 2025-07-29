@@ -1,6 +1,17 @@
 import os
+import sys
 import json
 import requests
+
+# Ensure the root directory is in the path for imports
+root_dir = os.path.dirname(os.path.dirname(__file__))
+sys.path.append(os.path.join(root_dir, 'src'))
+
+from utils import get_logger
+
+
+# Configure logging
+logger = get_logger(__name__)
 
 # Get Ollama host from environment variable, default to Docker service name
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
@@ -44,18 +55,18 @@ Use the following format (as a JSON array):
 [
   {{
     "host": "<host-name>",
-    "metric": "<CPU User | CPU System | Disk Used | Net In | Net Out>",
-    "current_value": <float>,
-    "predicted_value": <float>,
-    "time_to_reach_threshold": "<e.g. 4 hours or N/A>",
-    "status": "<normal | monitoring | alert | anomaly>",
-    "trend": "<increasing | decreasing | stable>",
+    "metric": "One of <CPU User | CPU System | Disk Used | Net In | Net Out>",
+    "current_value": <float value, e.g. 75.5>,
+    "predicted_value": <The predicted value in float, e.g. 80.0>,
+    "time_to_reach_threshold": "<e.g. 4 hours>",
+    "status": "One of <normal | monitoring | alert | anomaly>",
+    "trend": "One of <increasing | decreasing | stable>",
     "anomaly_detected": <true | false>,
-    "explanation": "<short explanation>",
-    "recommendation": "<action if needed>",
+    "explanation": "<short explanation of the analysis>",
+    "recommendation": "<action to take, e.g. 'Increase CPU capacity'>",
     "suggested_threshold": {{
-      "day": <int>,
-      "night": <int>
+      "day": <percent value for day threshold>,
+      "night": <percent value for night threshold>
     }}
   }},
   ...
@@ -74,23 +85,26 @@ Recent metrics:
 def get_prediction(prompt, model=OLLAMA_MODEL):
     try:
         response = requests.post(
-            f"{OLLAMA_HOST}/api/generate",
+            f"{OLLAMA_HOST}/api/chat",
             json={
                 "model": model,
-                "prompt": prompt,
+                "messages": [
+                    {"role": "system", "content": "You are an AI system for infrastructure monitoring."},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.3,
+                "top_p": 0.9,
                 "stream": False,
-                "options": {
-                    "temperature": 0.3,
-                    "top_p": 0.9,
-                }
+                "format": "json"
             },
             timeout=120
         )
         response.raise_for_status()
         output = response.json()
-        return output["response"].strip()
+        logger.info(f"Received response from Ollama: {output}")  # Debugging output
+        return output["message"]["content"].strip()
     except Exception as e:
-        print(f"Error calling Ollama: {e}")
+        logger.error(f"Error calling Ollama: {e}")
         # Return a minimal structured fallback
         return json.dumps([
             {
@@ -122,14 +136,10 @@ def parse_prediction_response(response_text):
     try:
         # Attempt to parse the response as JSON
         parsed_json = json.loads(response_text)
-        
-        # Basic structure validation
-        if isinstance(parsed_json, list) and all(isinstance(item, dict) for item in parsed_json):
-            return parsed_json
-        else:
-            raise ValueError("Response is not a list of dictionaries")
+
+        return parsed_json
     except Exception as e:
-        print(f"Error parsing JSON prediction response: {e}")
+        logger.error(f"Error parsing JSON prediction response: {e}")
         # Return fallback structure
         return [{
             "host": "unknown",

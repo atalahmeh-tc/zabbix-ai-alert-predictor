@@ -81,14 +81,15 @@ def generate_data():
         )
         writer.writeheader()
 
-        for host in hosts:
-            current_time = start_time
-            for i in range(points_per_host):
-                global rows_count
-                rows_count += 1
-                row = generate_row(current_time, host, i, rows_count)
-                writer.writerow(row)
-                current_time += timedelta(minutes=interval_minutes)
+        total_points = len(hosts) * points_per_host
+        current_time = start_time
+        for i in range(total_points):
+            global rows_count
+            rows_count += 1
+            host = random.choice(hosts)
+            row = generate_row(current_time, host, i % points_per_host, rows_count)
+            writer.writerow(row)
+            current_time += timedelta(minutes=interval_minutes)
 
     print("✅ Data saved: zabbix_like_data_with_anomalies.csv")
     print("⚠️ Injected Anomalies:")

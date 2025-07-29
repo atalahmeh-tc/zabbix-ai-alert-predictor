@@ -1,5 +1,5 @@
 export OLLAMA_HOST=http://localhost:11434
-export OLLAMA_MODEL=llama3.2:3b
+export OLLAMA_MODEL=granite3-moe:latest
 
 # Makefile for Zabbix AI Alert Predictor
 
@@ -24,6 +24,7 @@ help:
 	@echo "  shell-app   		- Open shell in Streamlit app container"
 	@echo "  start       		- Quick start: build and run everything"
 	@echo "  reset       		- Full reset: clean and start fresh"
+	@echo "  generate        	- Generate mock Zabbix data for testing"
 
 # Build all images
 build:
@@ -104,3 +105,8 @@ start: build up
 
 # Full reset - clean and start fresh
 reset: clean start
+
+# Generate mock Zabbix data for testing
+generate:
+	@echo "Generating mock Zabbix data..."
+	@python bin/data_generator.py

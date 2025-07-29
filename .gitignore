@@ -255,3 +255,4 @@ config.local.ini
 
 # LLM Models
 ollama/
+models.txt
