@@ -233,7 +233,6 @@ logs/
 
 # Project specific
 predictions.db
-*.csv
 data/*.csv
 !data/sample_data.csv
 
