@@ -95,7 +95,7 @@ zabbix-ai-alert-predictor/
 ├── dashboard/
 │   └── app.py                   # Streamlit dashboard
 ├── data/
-│   └── zabbix_like_data_with_anomalies.csv # Sample monitoring data
+│   └── mock_zabbix_data.csv # Sample monitoring data
 ├── src/
 │   ├── predictor.py             # AI prediction logic (Ollama)
 │   └── db.py                    # Database operations

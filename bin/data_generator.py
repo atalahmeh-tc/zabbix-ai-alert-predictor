@@ -3,8 +3,8 @@ import csv
 import random
 from datetime import datetime, timedelta
 
-# Configurable parameters - Scale up to 500,000+ data points
-hosts = ["host-{:02d}".format(i) for i in range(1, 21)]  # 20 hosts
+# Configurable parameters - Scale up to thousands of hosts
+hosts = ["host-01"]  # 1 host
 interval_minutes = 5
 days = 365  # Simulate for 1 year
 start_time = datetime.now() - timedelta(days=days)
@@ -12,7 +12,7 @@ points_per_host = (24 * 60 // interval_minutes) * days
 rows_count = 0
 
 print(f"Generating data for {len(hosts)} hosts over {days} days...")
-print(f"Total data points: {len(hosts) * points_per_host:,} (Target: 500,000+)")
+print(f"Total data points: {len(hosts) * points_per_host:,}")
 
 # Function to inject anomalies
 def get_anomaly_indexes():
@@ -63,7 +63,7 @@ def generate_data():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(os.path.dirname(script_dir), "data")
     os.makedirs(data_dir, exist_ok=True)
-    output_file = os.path.join(data_dir, "zabbix_like_data_with_anomalies.csv")
+    output_file = os.path.join(data_dir, "mock_zabbix_data.csv")
     
     with open(output_file, "w", newline="") as f:
         writer = csv.DictWriter(
@@ -91,7 +91,7 @@ def generate_data():
             writer.writerow(row)
             current_time += timedelta(minutes=interval_minutes)
 
-    print("✅ Data saved: zabbix_like_data_with_anomalies.csv")
+    print("✅ Data saved: mock_zabbix_data.csv")
     print("⚠️ Injected Anomalies:")
     for ts, host in anomalies:
         print(f"  - [{ts}] on {host}")
