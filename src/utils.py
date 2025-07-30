@@ -8,6 +8,9 @@ import streamlit as st
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Define a global logger
+logger = logging.getLogger(__name__)
+
 # get_logger function to return a logger instance
 # This allows for consistent logging across the application
 def get_logger(module_name):
@@ -23,6 +26,10 @@ def load_data(path: str) -> pd.DataFrame:
 # parse_json_response function to extract and validate JSON from AI responses
 def parse_json_response(raw: str):
     try:
+
+        # log response for debugging
+        logger.info(f"AI response: {raw}")
+
         # Extract JSON block using regex: head is ```json, tail is ```
         match = re.search(r"({.*})", raw, re.DOTALL)
         if match:
