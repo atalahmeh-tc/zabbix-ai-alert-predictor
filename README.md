@@ -185,7 +185,7 @@ make reset           # Full reset: clean and start fresh
 
 4. **Run the dashboard**
    ```bash
-   streamlit run dashboard/app.py
+   streamlit run src/app.py
    ```
 
 ### Debugging and Development
@@ -218,8 +218,8 @@ Create a `.env` file for local configuration:
 
 ```bash
 # Ollama Configuration
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3.2:3b
+AI_HOST=http://localhost:11434
+AI_MODEL=llama3.2:3b
 
 # Database
 DATABASE_PATH=predictions.db

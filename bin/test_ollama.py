@@ -13,12 +13,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.predictor import create_prompt, get_prediction
 
 # Get Ollama host from environment variable, default to localhost for testing
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+AI_HOST = os.getenv("AI_HOST", "http://localhost:11434")
 
 def test_ollama_connection():
     """Test basic connection to Ollama API"""
     try:
-        response = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
+        response = requests.get(f"{AI_HOST}/api/tags", timeout=5)
         if response.status_code == 200:
             models = response.json()
             print("✅ Ollama API is accessible")
@@ -42,7 +42,7 @@ def test_model_generation(model_name):
         
         print(f"Testing model '{model_name}' with simple prompt...")
         response = requests.post(
-            f"{OLLAMA_HOST}/api/generate",
+            f"{AI_HOST}/api/generate",
             json=payload,
             timeout=30
         )
@@ -90,9 +90,9 @@ def test_prediction_function():
 if __name__ == "__main__":
     print("🔧 Testing Ollama Setup")
     print("=" * 50)
-    print(f"🌐 Connecting to Ollama at: {OLLAMA_HOST}")
-    print("💡 To test against Docker container, set: export OLLAMA_HOST=http://ollama:11434")
-    print("💡 To test against localhost, set: export OLLAMA_HOST=http://localhost:11434")
+    print(f"🌐 Connecting to Ollama at: {AI_HOST}")
+    print("💡 To test against Docker container, set: export AI_HOST=http://ollama:11434")
+    print("💡 To test against localhost, set: export AI_HOST=http://localhost:11434")
     
     # Test 1: Basic connectivity
     print("\n1. Testing Ollama API connectivity...")

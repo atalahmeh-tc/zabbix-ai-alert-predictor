@@ -1,5 +1,5 @@
-export OLLAMA_HOST=http://localhost:11434
-export OLLAMA_MODEL=granite3-moe:latest
+export AI_HOST=http://localhost:11434
+export AI_MODEL=granite3-moe:latest
 
 # Makefile for Zabbix AI Alert Predictor
 
@@ -69,11 +69,11 @@ clean:
 # Install and setup the model
 install-model:
 	@echo "Checking if ollama model is already installed in Ollama container..."
-	@if docker exec zabbix_ai_ollama ollama list | grep -q '$(OLLAMA_MODEL)'; then \
-		echo "$(OLLAMA_MODEL) model already installed."; \
+	@if docker exec zabbix_ai_ollama ollama list | grep -q '$(AI_MODEL)'; then \
+		echo "$(AI_MODEL) model already installed."; \
 	else \
-		echo "Installing $(OLLAMA_MODEL) model..."; \
-		docker exec -it zabbix_ai_ollama ollama pull $(OLLAMA_MODEL) || echo "Model pull failed"; \
+		echo "Installing $(AI_MODEL) model..."; \
+		docker exec -it zabbix_ai_ollama ollama pull $(AI_MODEL) || echo "Model pull failed"; \
 		sleep 5; \
 	fi
 	@echo "Verifying model installation..."
@@ -84,7 +84,7 @@ test-ollama-api:
 	@echo "Testing Ollama API connection..."
 	@curl -s -X POST http://localhost:11434/api/generate \
 		-H "Content-Type: application/json" \
-		-d '{"model": "$(OLLAMA_MODEL)", "prompt": "Hello, world!", "stream": false}' \
+		-d '{"model": "$(AI_MODEL)", "prompt": "Hello, world!", "stream": false}' \
 		| jq -r '.response // .error' || echo "API test failed or jq not available"
 
 # Test using Python test script
@@ -101,7 +101,7 @@ shell-app:
 	docker exec -it zabbix_ai_app /bin/bash
 
 # Quick start - build and run everything
-start: build up
+start: clean build up
 
 # Full reset - clean and start fresh
 reset: clean start

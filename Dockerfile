@@ -6,6 +6,8 @@ COPY requirements.txt /app/requirements.txt
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-COPY . /app
+# Copy the entire application code to the container
+COPY src/* ./
+COPY data ./data
 
-CMD ["streamlit", "run", "dashboard/app.py", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0"]
