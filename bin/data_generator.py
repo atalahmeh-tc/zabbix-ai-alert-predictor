@@ -30,33 +30,18 @@ def generate_row(timestamp, host, index, rows_count):
 
     if is_anomaly:
         # Inject anomalies
-        cpu_user = round(random.uniform(90, 100), 2)  # High CPU usage for anomaly
-        cpu_system = round(random.uniform(10, 20), 2)
-        disk_used = round(random.uniform(85, 99), 2)  # High disk usage for anomaly
-        net_in = round(
-            random.uniform(500000, 800000), 2
-        )  # High network usage for anomaly
-        net_out = round(random.uniform(400000, 700000), 2)
+        cpu_usage = round(random.uniform(90, 100), 2)  # High CPU usage for anomaly
         anomalies.append((timestamp.strftime("%Y-%m-%d %H:%M:%S"), host))
     else:
         # Normal behavior
-        cpu_user = round(random.gauss(25, 8), 2)
-        cpu_system = round(random.gauss(7, 2), 2)
-        disk_used = round(min(100, 60 + 0.03 * index + random.gauss(0, 1.5)), 2)
-        net_in = round(abs(random.gauss(200000, 50000)), 2)
-        net_out = round(abs(random.gauss(150000, 40000)), 2)
+        cpu_usage = round(random.gauss(25, 8), 2)
 
     return {
         "ID": rows_count,
         "Timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
         "Host": host,
-        "CPU User": cpu_user,
-        "CPU System": cpu_system,
-        "Disk Used": disk_used,
-        "Net In": net_in,
-        "Net Out": net_out,
+        "CPU Usage": cpu_usage,
     }
-
 
 # Generate synthetic data and write to CSV
 def generate_data():
@@ -72,11 +57,7 @@ def generate_data():
                 "ID",
                 "Timestamp",
                 "Host",
-                "CPU User",
-                "CPU System",
-                "Disk Used",
-                "Net In",
-                "Net Out",
+                "CPU Usage",
             ],
         )
         writer.writeheader()

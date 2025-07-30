@@ -22,7 +22,7 @@ from ai import call_ai, trend_prompt, threshold_prompt, anomaly_prompt
 from utils import load_data, parse_json_response
 
 # Default latest data points
-n_points = 20
+n_points = 50
 
 # ------------------
 # Insights Functions
