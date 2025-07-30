@@ -29,24 +29,30 @@ n_points = 50
 # ------------------
 
 def analyze_trends(df: pd.DataFrame):
-    tbl = df[["Timestamp"] + df.columns.difference(["ID","Host","Timestamp"]).tolist()]\
-              .tail(n_points).to_csv(index=False)
+    tbl = df[["Timestamp", "CPU"]].tail(n_points).to_csv(index=False)    
     raw = call_ai(trend_prompt, {"metrics_table": tbl})
     return parse_json_response(raw)
 
 def predict_thresholds(df: pd.DataFrame):
     df2 = df.copy()
     df2['hour'] = df2['Timestamp'].dt.hour
+
+    # Split into day and night
     day_df = df2[(df2['hour'] >= 8) & (df2['hour'] < 20)]
     night_df = df2[~((df2['hour'] >= 8) & (df2['hour'] < 20))]
-    day_tbl = day_df.drop(columns=['ID','Host','Timestamp','hour']).tail(n_points).to_csv(index=False)
-    night_tbl = night_df.drop(columns=['ID','Host','Timestamp','hour']).tail(n_points).to_csv(index=False)
+
+    # Include CPU, exclude hour if not useful
+    day_tbl = day_df.drop(columns=['Timestamp', 'hour']).tail(n_points).to_csv(index=False)
+    night_tbl = night_df.drop(columns=['Timestamp', 'hour']).tail(n_points).to_csv(index=False)
+
     raw = call_ai(threshold_prompt, {'day_table': day_tbl, 'night_table': night_tbl})
     return parse_json_response(raw)
 
+
 def detect_anomalies(df: pd.DataFrame):
-    tbl = df[['Timestamp','Host'] + df.columns.difference(['ID','Host','Timestamp']).tolist()]\
-              .tail(n_points).to_csv(index=False)
+    cols = ['Timestamp', 'CPU'] + [col for col in df.columns if col not in ['Timestamp', 'CPU']]
+    tbl = df[cols].tail(n_points).to_csv(index=False)
+
     raw = call_ai(anomaly_prompt, {'full_table': tbl})
     return parse_json_response(raw)
 
@@ -62,8 +68,8 @@ uploaded = st.sidebar.file_uploader("Upload Zabbix CSV", type=['csv'])
 if uploaded:
     data = load_data(uploaded)
 else:
-    st.sidebar.info("Using default mock data: data/mock_zabbix_data.csv")
-    data = load_data('data/mock_zabbix_data.csv')
+    st.sidebar.info("Using default mock data: mock/zabbix_cpu_system.csv")
+    data = load_data('mock/zabbix_cpu_system.csv')
 
 # Display data overview
 st.subheader("Latest Readings (last 10)")

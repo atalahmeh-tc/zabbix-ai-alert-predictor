@@ -2,7 +2,15 @@
 import os
 import sys
 import streamlit as st
-# import numpy as np
+
+# ------------------
+# Logging Setup
+# ------------------
+from utils import get_logger
+
+logger = get_logger(__name__)
+
+
 
 # ------------------
 # LLM Setup: Local Ollama Only
@@ -26,13 +34,18 @@ except Exception as e:
 # ------------------
 def call_ai(prompt: PromptTemplate, inputs: dict) -> str:
     """
-    Invoke local Ollama
+    Invoke local Ollama or remote AI endpoint.
     Returns raw LLM response string.
     """
-    # Chain prompt formatting and LLM invocation using pipe operator
-    chain = (lambda x: prompt.format(**x)) | llm
-    return chain.invoke(inputs)  # Ensure we get a complete response
+    final_prompt = prompt.format(**inputs)
 
+    # Log the final prompt string sent to the LLM
+    logger.info(f"Final prompt string:\n{final_prompt}")
+
+    # Chain formatting and LLM invocation
+    chain = (lambda x: final_prompt) | llm
+
+    return chain.invoke(inputs)
 # ------------------
 # Prompt templates
 # ------------------
