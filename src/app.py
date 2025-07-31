@@ -20,6 +20,7 @@ import pandas as pd
 # Import AI functions and prompts
 from ai import call_ai, trend_prompt, threshold_prompt, anomaly_prompt
 from utils import load_data, parse_json_response
+from predictive import detect_anomalies_iso, forecast_trend
 
 # Default latest data points
 n_points = 50
@@ -29,8 +30,19 @@ n_points = 50
 # ------------------
 
 def analyze_trends(df: pd.DataFrame):
-    tbl = df[["Timestamp", "CPU"]].tail(n_points).to_csv(index=False)    
-    raw = call_ai(trend_prompt, {"metrics_table": tbl})
+    forecast_df, first_hit = forecast_trend(df)
+    trend_payload = {
+        "threshold_percent": 63,
+        "first_median_breach": first_hit.isoformat() if first_hit else None,
+        "median_cpu_next_24h": round(forecast_df.query("ds > @df['timestamp'].max()").head(24)["yhat"].mean(), 1),
+        "median_cpu_end_of_horizon": round(forecast_df.iloc[-1]["yhat"], 1),
+        "growth_rate_pct_per_day": round(
+            (forecast_df.iloc[-1]["trend"] - forecast_df.iloc[0]["trend"])
+            / len(forecast_df["trend"].dropna().unique().tolist()) * 100, 2
+        ),
+    }
+    
+    raw = call_ai(trend_prompt,{"trend_payload":trend_payload})
     return parse_json_response(raw)
 
 def predict_thresholds(df: pd.DataFrame):
@@ -50,15 +62,29 @@ def predict_thresholds(df: pd.DataFrame):
 
 
 def detect_anomalies(df: pd.DataFrame):
-    cols = ['Timestamp', 'CPU'] + [col for col in df.columns if col not in ['Timestamp', 'CPU']]
-    tbl = df[cols].tail(n_points).to_csv(index=False)
+    cpu_5 = detect_anomalies_iso(df)
 
-    raw = call_ai(anomaly_prompt, {'full_table': tbl})
+    anoms = cpu_5.query("anomaly == -1").copy()
+    now        = cpu_5["timestamp"].max()
+    last_24h   = now - pd.Timedelta("1D")
+    last_7d    = now - pd.Timedelta("7D")
+
+    payload = {
+        "total_anomalies_last_24h": int((anoms["timestamp"] > last_24h).sum()),
+        "total_anomalies_last_7d":  int((anoms["timestamp"] > last_7d).sum()),
+        "most_recent_anomaly_time": anoms["timestamp"].max().isoformat() if not anoms.empty else None,
+        "most_recent_anomaly_score": round(anoms.sort_values("timestamp").iloc[-1]["anomaly_score"], 4) if not anoms.empty else None,
+        "worst_anomaly_score_last_24h": round(anoms[anoms["timestamp"] > last_24h]["anomaly_score"].min(), 4) if not anoms.empty else None,
+    }
+
+    raw = call_ai(anomaly_prompt,{"payload":payload})
+
     return parse_json_response(raw)
 
 # ------------------
 # Streamlit UI
 # ------------------
+DATA_PATH = 'mock/zabbix_cpu_data.csv'
 
 st.set_page_config(page_title="Predictive Monitoring Dashboard", layout="wide")
 st.title("📊 Predictive Monitoring using Zabbix Data")
@@ -68,12 +94,12 @@ uploaded = st.sidebar.file_uploader("Upload Zabbix CSV", type=['csv'])
 if uploaded:
     data = load_data(uploaded)
 else:
-    st.sidebar.info("Using default mock data: mock/zabbix_cpu_system.csv")
-    data = load_data('mock/zabbix_cpu_system.csv')
+    st.sidebar.info(f"Using default mock data: {DATA_PATH}")
+    data = load_data(DATA_PATH)
 
 # Display data overview
 st.subheader("Latest Readings (last 10)")
-st.dataframe(data.sort_values('Timestamp').tail(10), hide_index=True)
+st.dataframe(data.sort_values('timestamp').tail(10), hide_index=True)
 
 # Main analysis sections
 st.subheader("Trend Analysis")
@@ -81,10 +107,10 @@ with st.spinner("🤖 Analyzing trends via AI..."):
     trends = analyze_trends(data)
     st.json(trends)
 
-st.subheader("Threshold Predictions")
-with st.spinner("🤖 Predicting thresholds via AI..."):
-    thresholds = predict_thresholds(data)
-    st.json(thresholds)
+# st.subheader("Threshold Predictions")
+# with st.spinner("🤖 Predicting thresholds via AI..."):
+#     thresholds = predict_thresholds(data)
+#     st.json(thresholds)
 
 st.subheader("Anomaly Detection")
 with st.spinner("🤖 Detecting anomalies via AI..."):
@@ -92,7 +118,7 @@ with st.spinner("🤖 Detecting anomalies via AI..."):
     st.dataframe(pd.DataFrame(anomalies))
 
 # Download combined report
-report = {'trends': trends, 'thresholds': thresholds, 'anomalies': anomalies}
+report = {'trends': trends, 'thresholds': {}, 'anomalies': anomalies}
 st.download_button(
     label="Download AI Report (JSON)",
     data=json.dumps(report, indent=2),

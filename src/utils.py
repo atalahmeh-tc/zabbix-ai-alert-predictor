@@ -21,7 +21,7 @@ def get_logger(module_name):
 
 # load_data function to read CSV files into DataFrames
 def load_data(path: str) -> pd.DataFrame:
-    return pd.read_csv(path, parse_dates=["Timestamp"])
+    return pd.read_csv(path, parse_dates=["timestamp"])
 
 # parse_json_response function to extract and validate JSON from AI responses
 def parse_json_response(raw: str):
