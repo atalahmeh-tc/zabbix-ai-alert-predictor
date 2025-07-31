@@ -30,11 +30,14 @@ n_points = 50
 # ------------------
 
 def analyze_trends(df: pd.DataFrame):
-    forecast_df, first_hit = forecast_trend(df)
+    THRESHOLD = 63
+    forecast_df, first_hit = forecast_trend(df,threshold=THRESHOLD)
+    cutoff_ts = df["timestamp"].max()
+
     trend_payload = {
-        "threshold_percent": 63,
+        "threshold_percent": THRESHOLD,
         "first_median_breach": first_hit.isoformat() if first_hit else None,
-        "median_cpu_next_24h": round(forecast_df.query("ds > @df['timestamp'].max()").head(24)["yhat"].mean(), 1),
+        "median_cpu_next_24h": round(forecast_df.query("ds > @cutoff_ts").head(24)["yhat"].mean(), 1),
         "median_cpu_end_of_horizon": round(forecast_df.iloc[-1]["yhat"], 1),
         "growth_rate_pct_per_day": round(
             (forecast_df.iloc[-1]["trend"] - forecast_df.iloc[0]["trend"])

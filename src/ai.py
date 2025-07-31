@@ -72,7 +72,7 @@ Always reply in valid JSON only (no markdown, no code fences).
 Return a single JSON object with **exactly** these keys:
 
 - "summary":        short sentence (<=120 chars) for on-call chat.
-- "risk_level":     one of "none", "low", "moderate", "high", "critical".
+- "severity":       one of "none", "low", "moderate", "high", "critical".
 - "breach_time":    copy of first_median_breach or "n/a".
 - "action":         one-sentence recommended action (e.g. scale up, monitor).
 - "justification":  1-sentence reason using the numbers.
