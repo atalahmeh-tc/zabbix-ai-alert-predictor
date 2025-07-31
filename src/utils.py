@@ -74,9 +74,9 @@ def ai_to_prediction_record(host: str, metric: str, data: dict) -> dict:
     anomaly_detected = 1 if anomalies.get("severity") in ["high", "critical"] else 0
     breach_time = trends.get("breach_time", "N/A")
     status = "alert" if (trend == "increasing" or anomaly_detected) else "normal"
-    message = f"{trends.get("summary", "")} {anomalies.get("summary", "")}".strip()
-    explanation = f"{trends.get("justification", "")} {anomalies.get("justification", "")}".strip()
-    recommendation = f"{trends.get("action", "")} {anomalies.get("action", "")}".strip()
+    message = f"{trends.get('summary', '')} {anomalies.get('summary', '')}".strip()
+    explanation = f"{trends.get('justification', '')} {anomalies.get('justification', '')}".strip()
+    recommendation = f"{trends.get('action', '')} {anomalies.get('action', '')}".strip()
     suggested_threshold = trends.get("threshold_percent", {
         # Prediction thresholds based on time of day
         "day": 75,
