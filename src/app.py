@@ -21,6 +21,7 @@ import pandas as pd
 from ai import call_ai, trend_prompt, threshold_prompt, anomaly_prompt
 from utils import load_data, parse_json_response
 from predictive import detect_anomalies_iso, forecast_trend
+from datetime import datetime, timezone
 
 # Default latest data points
 n_points = 50
@@ -34,9 +35,27 @@ def analyze_trends(df: pd.DataFrame):
     forecast_df, first_hit = forecast_trend(df,threshold=THRESHOLD)
     cutoff_ts = df["timestamp"].max()
 
+    now = pd.Timestamp.now(tz=first_hit.tz)
+
+    cpu_at_breach = None
+    days_until_breach = None
+
+    if first_hit is not None:
+        breach_row = forecast_df.loc[forecast_df["ds"] == first_hit].iloc[0]
+        cpu_at_breach = float(breach_row["yhat"])
+        days_until_breach = round((first_hit - now).total_seconds() / 86400, 1)
+
+    future_mask = forecast_df["ds"] > df["timestamp"].max()
+    peak_cpu_future = float(forecast_df.loc[future_mask, "yhat"].max())
+
+
     trend_payload = {
+        "generated_at": now.isoformat(),
         "threshold_percent": THRESHOLD,
-        "first_median_breach": first_hit.isoformat() if first_hit else None,
+        "first_median_breach_expected": first_hit.isoformat() if first_hit else None,
+        "days_until_breach": days_until_breach,
+        "predicted_cpu_at_breach": cpu_at_breach, 
+        "peak_cpu_next_30d": peak_cpu_future,
         "median_cpu_next_24h": round(forecast_df.query("ds > @cutoff_ts").head(24)["yhat"].mean(), 1),
         "median_cpu_end_of_horizon": round(forecast_df.iloc[-1]["yhat"], 1),
         "growth_rate_pct_per_day": round(

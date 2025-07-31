@@ -20,7 +20,7 @@ from langchain_ollama import OllamaLLM
 
 # Initialize local Ollama LLM
 ollama_url = os.getenv("AI_HOST", "http://localhost:11434")
-ollama_model = os.getenv("AI_MODEL", "granite3-moe:latest")
+ollama_model = os.getenv("AI_MODEL", "deepseek-r1:1.5b")
 temperature = float(os.getenv("AI_TEMPERATURE", 0.2))
 try:
     llm = OllamaLLM(model=ollama_model, base_url=ollama_url, temperature=temperature)
@@ -54,31 +54,37 @@ trend_prompt = PromptTemplate(
     input_variables=["trend_payload"],
     template = """
 You are an SRE capacity-planning assistant.
-Always reply in valid JSON only (no markdown, no code fences).
+ALWAYS reply with **valid JSON only** (no markdown, no code fences).
 
-# Data schema
+# Data schema (read carefully)
 {{
-"threshold_percent": int, // Critical CPU level
-"first_median_breach": str|null, // ISO-8601 timestamp or null
-"median_cpu_next_24h": float, // %
-"median_cpu_end_of_horizon": float,// %
-"growth_rate_pct_per_day": float // +ve = increasing load
+  "generated_at": ISO-8601       // when this snapshot was produced
+, "threshold_percent": int        // critical CPU level
+, "first_median_breach_expected": str|null // ISO-8601 timestamp or null
+, "days_until_breach": float|null // days between generated_at and breach
+, "predicted_cpu_at_breach": float|null // median CPU at that breach hour
+, "peak_cpu_next_30d": float      // highest median value in forecast horizon
+, "median_cpu_next_24h": float    // 24-h forward median
+, "median_cpu_end_of_horizon": float // median at the last forecast point
+, "growth_rate_pct_per_day": float   // +ve = increasing load
 }}
 
 # Data
 {trend_payload}
 
-# What to output
-Return a single JSON object with **exactly** these keys:
+# Produce EXACTLY this JSON object:
+{{
+  "summary": "<≤120 chars sentence for on-call chat>",
+  "severity": "none" | "low" | "moderate" | "high" | "critical",
+  "breach_time": "<copy first_median_breach_expected or 'n/a'>",
+  "cpu_at_breach": "<copy predicted_cpu_at_breach or 'n/a'>",
+  "lead_time_days": "<copy days_until_breach or 'n/a'>",
+  "action": "<one-sentence recommended next step (e.g. scale up, monitor)>",
+  "justification": "<one sentence citing and reasoning the key numbers>",
+  "confidence": 0-100 (your subjective certainty)
+}}
 
-- "summary":        short sentence (<=120 chars) for on-call chat.
-- "severity":       one of "none", "low", "moderate", "high", "critical".
-- "breach_time":    copy of first_median_breach or "n/a".
-- "action":         one-sentence recommended action (e.g. scale up, monitor).
-- "justification":  1-sentence reason using the numbers.
-- "confidence":     percentage 0-100 (your subjective certainty).
-
-No other keys, no prose before/after.
+Only JSON — no additional text.
 """
 )
 
