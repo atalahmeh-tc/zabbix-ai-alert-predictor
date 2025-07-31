@@ -69,18 +69,25 @@ else:
     st.sidebar.info(f"Using default mock data: {DATA_PATH}")
     data = load_data(DATA_PATH)
 
-
 # Filter data for selected host and metric
 st.sidebar.markdown("### Select Host and Metric")
 host = st.sidebar.selectbox("Host", ["host-01"])
 metric = st.sidebar.selectbox("Metric", ["CPU Usage"])
 
 # Add analysis button
-run_analysis = st.sidebar.button("Run Analysis")
+run_analysis = st.sidebar.button("Analyze", use_container_width=True)
 
 # Display data overview
-st.subheader("Latest Readings (last 10)")
-st.dataframe(data.sort_values('timestamp').tail(10), hide_index=True)
+st.subheader("Latest Readings (last 5)")
+st.dataframe(
+    data.sort_values('timestamp').tail(5),
+    hide_index=False,
+    column_config={
+        "": "ID",
+        "timestamp": "Timestamp",
+        "cpu_usage_percent": "CPU Usage (%)"
+    }
+)
 
 # Only run analysis if button pressed
 trends = None
