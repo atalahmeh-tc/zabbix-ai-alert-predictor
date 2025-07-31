@@ -143,7 +143,7 @@ Return exactly this JSON structure:
 {{
   "summary":        "<concise sentence (<=120 chars)>",
   "severity":       "none" | "low" | "moderate" | "high" | "critical",
-  "latest_time":    "<copy of most_recent_anomaly_time or 'n/a'>",
+  "latest_time":    "<copy of most_recent_anomaly_time or n/a>",
   "action":         "<one-sentence recommended next step>",
   "justification":  "<why you chose this severity>",
   "confidence":     0-100  // subjective confidence %

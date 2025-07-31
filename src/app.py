@@ -115,7 +115,7 @@ with st.spinner("🤖 Analyzing trends via AI..."):
 st.subheader("Anomaly Detection")
 with st.spinner("🤖 Detecting anomalies via AI..."):
     anomalies = detect_anomalies(data)
-    st.dataframe(pd.DataFrame(anomalies))
+    st.json(anomalies)
 
 # Download combined report
 report = {'trends': trends, 'thresholds': {}, 'anomalies': anomalies}
