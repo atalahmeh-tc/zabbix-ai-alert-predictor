@@ -49,3 +49,57 @@ def parse_json_response(raw: str):
         st.error("⚠️ Unable to parse AI response as JSON:")
         st.code(raw, language="text")
         return {}
+
+# Function to convert AI results to a prediction record
+def ai_to_prediction_record(host: str, metric: str, data: dict) -> dict:
+    """
+    Convert AI results to a prediction record.
+    """
+    # Prediction record structure
+    # host TEXT,
+    # metric TEXT,
+    # status TEXT,
+    # message TEXT,
+    # trend TEXT,
+    # breach_time TEXT,
+    # anomaly_detected INTEGER,
+    # explanation TEXT,
+    # recommendation TEXT,
+    # suggested_threshold JSON,  # e.g. {"day": 75, "night": 90}
+    # metadata JSON,
+    # created_at TEXT DEFAULT CURRENT_TIMESTAMP
+
+    # Extracting trends and anomalies from the data
+    trends = data.get("trends", {})
+    anomalies = data.get("anomalies", {})
+
+    # Mapping AI results to prediction record
+    trend = "increasing" if trends.get("severity") in ["high", "critical"] else "stable"
+    anomaly_detected = 1 if anomalies.get("severity") in ["high", "critical"] else 0
+    breach_time = trends.get("breach_time", "N/A")
+    status = "alert" if (trend == "increasing" or anomaly_detected) else "normal"
+    message = f"{trends.get("summary", "")} {anomalies.get("summary", "")}".strip()
+    explanation = f"{trends.get("justification", "")} {anomalies.get("justification", "")}".strip()
+    recommendation = f"{trends.get("action", "")} {anomalies.get("action", "")}".strip()
+    suggested_threshold = trends.get("threshold_percent", {
+        # Prediction thresholds based on time of day
+        "day": 75,
+        "night": 90
+    })
+    
+    return {
+        "host": host,
+        "metric": metric,
+        "status": status,
+        "message": message,
+        "trend": trend,
+        "breach_time": breach_time,
+        "anomaly_detected": anomaly_detected,
+        "explanation": explanation,
+        "recommendation": recommendation,
+        "suggested_threshold": suggested_threshold,
+        "metadata": {
+            "trends": trends,
+            "anomalies": anomalies
+        }
+    }

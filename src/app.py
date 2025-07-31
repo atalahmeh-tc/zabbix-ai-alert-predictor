@@ -5,6 +5,7 @@
 import json
 import streamlit as st
 import pandas as pd
+import altair as alt
 
 # Import AI functions and prompts
 from ai import call_ai, trend_prompt, anomaly_prompt
@@ -15,11 +16,12 @@ from predictive import detect_anomalies_iso, forecast_trend
 # Insights Functions
 # ------------------
 
+THRESHOLD = 63  # Example threshold, can be dynamic
+
 def analyze_trends(df: pd.DataFrame):
-    threshold = 63  # Example threshold, can be dynamic
-    forecast_df, first_hit = forecast_trend(df, threshold=threshold)
+    forecast_df, first_hit = forecast_trend(df, threshold=THRESHOLD)
     trend_payload = {
-        "threshold_percent": threshold,
+        "threshold_percent": THRESHOLD,
         "first_median_breach": first_hit.isoformat() if first_hit else None,
         "median_cpu_next_24h": round(forecast_df.query("ds > @df['timestamp'].max()").head(24)["yhat"].mean(), 1),
         "median_cpu_end_of_horizon": round(forecast_df.iloc[-1]["yhat"], 1),
@@ -93,19 +95,49 @@ st.dataframe(
 trends = None
 anomalies = None
 if run_analysis:
+    # Trend Analysis
+    st.markdown("---")
     st.subheader("Trend Analysis")
+    # --- Forecast chart ---
+    forecast_df, first_hit = forecast_trend(data, threshold=THRESHOLD)
+    st.caption("Forecasted CPU usage and trend")
+    st.line_chart(
+        forecast_df.set_index("ds")[["yhat", "trend"]],
+        use_container_width=True,
+        x_label="Timestamp",
+        y_label="CPU Usage (%)"
+    )
+    # --- Send to AI ---
     with st.spinner("🤖 Analyzing trends via AI..."):
         trends = analyze_trends(data)
         st.json(trends)
 
+
+    # Anomaly Detection
+    st.markdown("---")
     st.subheader("Anomaly Detection")
-    with st.spinner("🤖 Detecting anomalies via AI..."):
+    # --- Anomaly chart ---
+    cpu_5 = detect_anomalies_iso(data)
+    st.caption("Detected anomalies (red dots) in CPU usage")
+    base = alt.Chart(cpu_5).mark_line().encode(
+        x=alt.X('timestamp:T', title='Timestamp'),
+        y=alt.Y('y:Q', title='CPU Usage (%)'),
+        tooltip=['timestamp', 'y']
+    )
+    anom_points = alt.Chart(cpu_5[cpu_5['anomaly'] == -1]).mark_point(color='red', size=60).encode(
+        x=alt.X('timestamp:T', title='Timestamp'),
+        y=alt.Y('y:Q', title='CPU Usage (%)'),
+        tooltip=['timestamp', 'y', 'anomaly_score']
+    )
+    st.altair_chart((base + anom_points).properties(title="CPU Usage & Anomalies"), use_container_width=True)
+    # --- Send to AI ---
+    with st.spinner("🤖 Analyzing anomalies via AI..."):
         anomalies = detect_anomalies(data)
         st.json(anomalies)
 
 # Only show download if analysis was run
 if trends is not None and anomalies is not None:
-    report = {'trends': trends, 'thresholds': {}, 'anomalies': anomalies}
+    report = {'trends': trends, 'anomalies': anomalies}
     st.download_button(
         label="Download AI Report (JSON)",
         data=json.dumps(report, indent=2),

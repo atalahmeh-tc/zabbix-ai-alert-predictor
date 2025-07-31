@@ -20,19 +20,18 @@ if [ ! -f /db/predictions.db ]; then
 -- Create predictions table
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TEXT,
     host TEXT,
     metric TEXT,
-    current_value TEXT,
-    predicted_value TEXT,
-    time_to_reach_threshold TEXT,
     status TEXT,
+    message TEXT,
     trend TEXT,
+    breach_time TEXT,
     anomaly_detected INTEGER,
     explanation TEXT,
     recommendation TEXT,
-    suggested_threshold TEXT,
-    created_at TEXT
+    suggested_threshold JSON,
+    metadata JSON,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 EOF
     if [ $? -eq 0 ]; then

@@ -73,50 +73,13 @@ Always reply in valid JSON only (no markdown, no code fences).
 Return a single JSON object with **exactly** these keys:
 
 - "summary":        short sentence (<=120 chars) for on-call chat.
-- "severity":     one of "none", "low", "moderate", "high", "critical".
+- "severity":       one of "none", "low", "moderate", "high", "critical".
 - "breach_time":    copy of first_median_breach or "n/a".
 - "action":         one-sentence recommended action (e.g. scale up, monitor).
 - "justification":  1-sentence reason using the numbers.
 - "confidence":     percentage 0-100 (your subjective certainty).
 
 No other keys, no prose before/after.
-"""
-)
-
-threshold_prompt = PromptTemplate(
-    input_variables=["day_table", "night_table"],
-    template="""
-You must derive adaptive alert thresholds for cpu_pct for host 'web-01' using only the last 24 hours.
-
-Inputs
-• CSV with ts, cpu_pct.  
-• Business hours = 09:00-18:00 Asia/Hebron (UTC+3).  
-• Hard limit: cpu_pct 90 %.
-
-Requirements
-1. Split data into daytime (09-18) and off-hours.  
-2. For each period calculate:
-   – q95 + 1 σ  (cap at 90 %).  
-3. Output YAML config:
-
-   host: web-01
-   thresholds:
-     cpu_pct:
-       daytime:{day_table}
-       off_hours: {night_table}
-
-4. Count alerts that would have fired in the past 24 h with:
-   a) static hard limit 90 %   
-   b) your smart thresholds  
-   Present a 2-row comparison table and % reduction in off-hours alerts.
-
-5. Give two short recommendations for refining the thresholds after another day’s data arrives.
-
-Output
-• YAML snippet, comparison table, <100-word summary.
-
-
-
 """
 )
 
@@ -153,3 +116,42 @@ Return exactly this JSON structure:
 Only JSON, nothing else.
 """
 )
+
+
+
+# threshold_prompt = PromptTemplate(
+#     input_variables=["day_table", "night_table"],
+#     template="""
+# You must derive adaptive alert thresholds for cpu_pct for host 'web-01' using only the last 24 hours.
+
+# Inputs
+# • CSV with ts, cpu_pct.  
+# • Business hours = 09:00-18:00 Asia/Hebron (UTC+3).  
+# • Hard limit: cpu_pct 90 %.
+
+# Requirements
+# 1. Split data into daytime (09-18) and off-hours.  
+# 2. For each period calculate:
+#    – q95 + 1 σ  (cap at 90 %).  
+# 3. Output YAML config:
+
+#    host: web-01
+#    thresholds:
+#      cpu_pct:
+#        daytime:{day_table}
+#        off_hours: {night_table}
+
+# 4. Count alerts that would have fired in the past 24 h with:
+#    a) static hard limit 90 %   
+#    b) your smart thresholds  
+#    Present a 2-row comparison table and % reduction in off-hours alerts.
+
+# 5. Give two short recommendations for refining the thresholds after another day’s data arrives.
+
+# Output
+# • YAML snippet, comparison table, <100-word summary.
+
+
+
+# """
+# )
