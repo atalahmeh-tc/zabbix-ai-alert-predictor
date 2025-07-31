@@ -74,12 +74,12 @@ ALWAYS reply with **valid JSON only** (no markdown, no code fences).
 
 # Produce EXACTLY this JSON object:
 {{
-  "summary": "<≤120 chars sentence for on-call chat>",
+  "summary": "<short sentence for on-call chat>",
   "severity": "none" | "low" | "moderate" | "high" | "critical",
   "breach_time": "<copy first_median_breach_expected or 'n/a'>",
   "cpu_at_breach": "<copy predicted_cpu_at_breach or 'n/a'>",
   "lead_time_days": "<copy days_until_breach or 'n/a'>",
-  "action": "<one-sentence recommended next step (e.g. scale up, monitor)>",
+  "action": "<one-sentence recommended next step>",
   "justification": "<one sentence citing and reasoning the key numbers>",
   "confidence": 0-100 (your subjective certainty)
 }}
