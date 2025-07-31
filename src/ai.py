@@ -72,7 +72,7 @@ ALWAYS reply with **valid JSON only** (no markdown, no code fences), double-quot
 # Data
 {trend_payload}
 
-# Produce EXACTLY this JSON object:
+# Produce EXACTLY this JSON object structure, dont miss any key:
 {{
   "summary": "<short sentence for on-call chat>",
   "severity": "none" | "low" | "moderate" | "high" | "critical",
@@ -153,7 +153,7 @@ ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quote
 # Data
 {anomaly_payload}
 
-# Produce EXACTLY this JSON object:
+# Produce EXACTLY this JSON object structure, dont miss any key:
 {{
   "summary":        "<short sentence for on-call chat>",
   "severity":     "none" | "low" | "moderate" | "high" | "critical",
