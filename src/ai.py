@@ -158,7 +158,7 @@ ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quote
   "summary":        "<short sentence summary>",
   "severity":     "none" | "low" | "moderate" | "high" | "critical",
   "action":         "<one concise step the on-call should take>",
-  "total_anomalies_last_24": "<copy total_anomalies_last_7d>",
+  "total_anomalies_last_24": "<copy total_anomalies_last_24h>",
   "worst_cpu_pct_last_24h": "<copy worst_cpu_pct_last_24h>",
   "most_recent_anomaly_time":"<copy most_recent_anomaly_time>"
   "justification":  "<one sentence citing the key numbers>",
