@@ -74,7 +74,7 @@ ALWAYS reply with **valid JSON only** (no markdown, no code fences), double-quot
 
 # Produce EXACTLY this JSON object structure, dont miss any key:
 {{
-  "summary": "<short sentence for on-call chat>",
+  "summary": "<short sentence summary>",
   "severity": "none" | "low" | "moderate" | "high" | "critical",
   "breach_time": "<copy first_median_breach_expected or 'n/a'>",
   "cpu_at_breach": "<copy predicted_cpu_at_breach or 'n/a'>",
@@ -155,7 +155,7 @@ ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quote
 
 # Produce EXACTLY this JSON object structure, dont miss any key:
 {{
-  "summary":        "<short sentence for on-call chat>",
+  "summary":        "<short sentence summary>",
   "severity":     "none" | "low" | "moderate" | "high" | "critical",
   "action":         "<one concise step the on-call should take>",
   "total_anomalies_last_7d": "<copy total_anomalies_last_7d>"
