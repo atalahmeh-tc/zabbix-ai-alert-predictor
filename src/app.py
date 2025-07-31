@@ -11,6 +11,7 @@ import altair as alt
 from ai import call_ai, trend_prompt, anomaly_prompt
 from utils import load_data, parse_json_response
 from predictive import detect_anomalies_iso, forecast_trend
+from datetime import datetime, timezone, timedelta
 
 # ------------------
 # Insights Functions
@@ -19,11 +20,31 @@ from predictive import detect_anomalies_iso, forecast_trend
 THRESHOLD = 63  # Example threshold, can be dynamic
 
 def analyze_trends(df: pd.DataFrame):
-    forecast_df, first_hit = forecast_trend(df, threshold=THRESHOLD)
+    forecast_df, first_hit = forecast_trend(df,threshold=THRESHOLD)
+    cutoff_ts = df["timestamp"].max()
+
+    now = pd.Timestamp.now(tz=first_hit.tz)
+
+    cpu_at_breach = None
+    days_until_breach = None
+
+    if first_hit is not None:
+        breach_row = forecast_df.loc[forecast_df["ds"] == first_hit].iloc[0]
+        cpu_at_breach = float(breach_row["yhat"])
+        days_until_breach = round((first_hit - now).total_seconds() / 86400, 1)
+
+    future_mask = forecast_df["ds"] > df["timestamp"].max()
+    peak_cpu_future = float(forecast_df.loc[future_mask, "yhat"].max())
+
+
     trend_payload = {
+        "generated_at": now.isoformat(),
         "threshold_percent": THRESHOLD,
-        "first_median_breach": first_hit.isoformat() if first_hit else None,
-        "median_cpu_next_24h": round(forecast_df.query("ds > @df['timestamp'].max()").head(24)["yhat"].mean(), 1),
+        "first_median_breach_expected": first_hit.isoformat() if first_hit else None,
+        "days_until_breach": days_until_breach,
+        "predicted_cpu_at_breach": cpu_at_breach, 
+        "peak_cpu_next_30d": peak_cpu_future,
+        "median_cpu_next_24h": round(forecast_df.query("ds > @cutoff_ts").head(24)["yhat"].mean(), 1),
         "median_cpu_end_of_horizon": round(forecast_df.iloc[-1]["yhat"], 1),
         "growth_rate_pct_per_day": round(
             (forecast_df.iloc[-1]["trend"] - forecast_df.iloc[0]["trend"])
@@ -36,24 +57,63 @@ def analyze_trends(df: pd.DataFrame):
 
 
 def detect_anomalies(df: pd.DataFrame):
-    cpu_5 = detect_anomalies_iso(df)
+    anom_df = detect_anomalies_iso(df)
+    anom_df["timestamp"] = pd.to_datetime(anom_df["timestamp"], utc=True)
 
-    anoms = cpu_5.query("anomaly == -1").copy()
-    now        = cpu_5["timestamp"].max()
-    last_24h   = now - pd.Timedelta("1D")
-    last_7d    = now - pd.Timedelta("7D")
+    now = datetime.now(timezone.utc)
+    last_24h = anom_df["timestamp"] >= now - timedelta(hours=24)
+    last_7d  = anom_df["timestamp"] >= now - timedelta(days=7)
 
-    payload = {
-        "total_anomalies_last_24h": int((anoms["timestamp"] > last_24h).sum()),
-        "total_anomalies_last_7d":  int((anoms["timestamp"] > last_7d).sum()),
-        "most_recent_anomaly_time": anoms["timestamp"].max().isoformat() if not anoms.empty else None,
-        "most_recent_anomaly_score": round(anoms.sort_values("timestamp").iloc[-1]["anomaly_score"], 4) if not anoms.empty else None,
-        "worst_anomaly_score_last_24h": round(anoms[anoms["timestamp"] > last_24h]["anomaly_score"].min(), 4) if not anoms.empty else None,
+    # newest outlier (if any) – fall back to newest point
+    try:
+        recent = anom_df[anom_df["anomaly"] == -1].iloc[-1]
+    except IndexError:
+        recent = anom_df.iloc[-1]
+
+    # worst (most negative) score in the past 24 h
+    worst24 = (
+        anom_df[last_24h]
+        .sort_values("anomaly_score")
+        .iloc[0]
+        if (last_24h & (anom_df["anomaly"] == -1)).any()
+        else recent
+    )
+
+    anomaly_payload = {
+        # ── metadata ──────────────────────────────────────────────
+        "generated_at": now.isoformat(timespec="seconds"),
+        "anomaly_method": "isolation_forest",
+        "score_sign": "negative = outlier, positive = normal",
+        "score_hint": "≈0 borderline, ≤-0.30 strong anomaly",
+
+        # ── aggregate counts ─────────────────────────────────────
+        "total_anomalies_last_24h": int((last_24h & (anom_df["anomaly"] == -1)).sum()),
+        "total_anomalies_last_7d":  int((last_7d  & (anom_df["anomaly"] == -1)).sum()),
+
+        # ── most-recent anomaly (may be mild) ────────────────────
+        "most_recent_anomaly_time": recent["timestamp"].isoformat(),
+        "most_recent_cpu_pct":      float(np.round(recent["y"], 3)),
+        "most_recent_anomaly_score":float(np.round(recent["anomaly_score"], 4)),
+        "most_recent_severity":     _anom_severity(recent["anomaly_score"]),
+
+        # ── strongest anomaly in the last 24 h ───────────────────
+        "worst_anomaly_time_last_24h": worst24["timestamp"].isoformat(),
+        "worst_cpu_pct_last_24h":      float(np.round(worst24["y"], 3)),
+        "worst_anomaly_score_last_24h":float(np.round(worst24["anomaly_score"], 4)),
+        "worst_severity_last_24h":     _anom_severity(worst24["anomaly_score"]),
     }
 
-    raw = call_ai(anomaly_prompt,{"payload":payload})
+    raw = call_ai(anomaly_prompt,{"anomaly_payload":anomaly_payload})
 
     return parse_json_response(raw)
+
+def _anom_severity(score: float) -> str:
+    if score >= 0:         return "none"
+    if score > -0.05:      return "mild"
+    if score > -0.15:      return "moderate"
+    if score > -0.30:      return "high"
+    return "critical"
+
 
 # ------------------
 # Streamlit UI

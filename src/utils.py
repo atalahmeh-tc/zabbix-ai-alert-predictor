@@ -40,10 +40,6 @@ def parse_json_response(raw: str):
         if not raw:
             st.error("⚠️ AI response is empty or invalid JSON.")
             return {}
-        
-        # Replace single quotes with double quotes for valid JSON
-        raw=raw.replace("'",'"')
-        
         return json.loads(raw)
     except json.JSONDecodeError:
         st.error("⚠️ Unable to parse AI response as JSON:")

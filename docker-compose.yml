@@ -36,7 +36,6 @@ services:
     volumes:
       - ollama:/root/.ollama
 
-
 volumes:
   ollama:
     driver: local
