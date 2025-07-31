@@ -6,6 +6,7 @@ import json
 import streamlit as st
 import pandas as pd
 import altair as alt
+import numpy as np
 
 # Import AI functions and prompts
 from ai import call_ai, trend_prompt, anomaly_prompt
