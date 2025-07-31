@@ -26,7 +26,6 @@ def load_data(path: str) -> pd.DataFrame:
 # parse_json_response function to extract and validate JSON from AI responses
 def parse_json_response(raw: str):
     try:
-
         # log response for debugging
         logger.info(f"AI response: {raw}")
 
@@ -41,7 +40,10 @@ def parse_json_response(raw: str):
         if not raw:
             st.error("⚠️ AI response is empty or invalid JSON.")
             return {}
+        
+        # Replace single quotes with double quotes for valid JSON
         raw=raw.replace("'",'"')
+        
         return json.loads(raw)
     except json.JSONDecodeError:
         st.error("⚠️ Unable to parse AI response as JSON:")

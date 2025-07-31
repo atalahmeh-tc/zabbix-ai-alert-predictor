@@ -1,6 +1,5 @@
-# predictive.py  (keep it next to your Streamlit app)
+# src/predictive.py  (keep it next to your Streamlit app)
 
-import pandas as pd
 from sklearn.ensemble import IsolationForest
 from prophet import Prophet
 

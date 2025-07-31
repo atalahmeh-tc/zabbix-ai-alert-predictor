@@ -1,3 +1,4 @@
+# src/ai.py
 
 import os
 import sys
@@ -20,7 +21,7 @@ from langchain_ollama import OllamaLLM
 
 # Initialize local Ollama LLM
 ollama_url = os.getenv("AI_HOST", "http://localhost:11434")
-ollama_model = os.getenv("AI_MODEL", "granite3-moe:latest")
+ollama_model = os.getenv("AI_MODEL", None)
 temperature = float(os.getenv("AI_TEMPERATURE", 0.2))
 try:
     llm = OllamaLLM(model=ollama_model, base_url=ollama_url, temperature=temperature)
@@ -72,7 +73,7 @@ Always reply in valid JSON only (no markdown, no code fences).
 Return a single JSON object with **exactly** these keys:
 
 - "summary":        short sentence (<=120 chars) for on-call chat.
-- "risk_level":     one of "none", "low", "moderate", "high", "critical".
+- "severity":     one of "none", "low", "moderate", "high", "critical".
 - "breach_time":    copy of first_median_breach or "n/a".
 - "action":         one-sentence recommended action (e.g. scale up, monitor).
 - "justification":  1-sentence reason using the numbers.

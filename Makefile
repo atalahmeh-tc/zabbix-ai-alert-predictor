@@ -1,5 +1,5 @@
 export AI_HOST=http://localhost:11434
-export AI_MODEL=granite3-moe:latest
+export AI_MODEL=llama3.1:8b
 
 # Makefile for Zabbix AI Alert Predictor
 

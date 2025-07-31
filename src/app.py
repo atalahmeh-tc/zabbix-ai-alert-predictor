@@ -1,38 +1,25 @@
 # App Name: predictive_monitoring_dashboard
 # Description: A Streamlit dashboard that uses a local Ollama LLM to analyze Zabbix monitoring data.
 # It provides insights on trends, predicts thresholds, and detects anomalies in system metrics.
-# requirements.txt should include:
-# streamlit
-# pandas
-# numpy
-# langchain
-# langchain-ollama
-#
-# To set up your environment:
-# 1. python -m venv venv
-# 2. source venv/bin/activate  OR  venv\Scripts\activate
-# 3. pip install -r requirements.txt
 
 import json
 import streamlit as st
 import pandas as pd
 
 # Import AI functions and prompts
-from ai import call_ai, trend_prompt, threshold_prompt, anomaly_prompt
+from ai import call_ai, trend_prompt, anomaly_prompt
 from utils import load_data, parse_json_response
 from predictive import detect_anomalies_iso, forecast_trend
-
-# Default latest data points
-n_points = 50
 
 # ------------------
 # Insights Functions
 # ------------------
 
 def analyze_trends(df: pd.DataFrame):
-    forecast_df, first_hit = forecast_trend(df)
+    threshold = 63  # Example threshold, can be dynamic
+    forecast_df, first_hit = forecast_trend(df, threshold=threshold)
     trend_payload = {
-        "threshold_percent": 63,
+        "threshold_percent": threshold,
         "first_median_breach": first_hit.isoformat() if first_hit else None,
         "median_cpu_next_24h": round(forecast_df.query("ds > @df['timestamp'].max()").head(24)["yhat"].mean(), 1),
         "median_cpu_end_of_horizon": round(forecast_df.iloc[-1]["yhat"], 1),
@@ -43,21 +30,6 @@ def analyze_trends(df: pd.DataFrame):
     }
     
     raw = call_ai(trend_prompt,{"trend_payload":trend_payload})
-    return parse_json_response(raw)
-
-def predict_thresholds(df: pd.DataFrame):
-    df2 = df.copy()
-    df2['hour'] = df2['Timestamp'].dt.hour
-
-    # Split into day and night
-    day_df = df2[(df2['hour'] >= 8) & (df2['hour'] < 20)]
-    night_df = df2[~((df2['hour'] >= 8) & (df2['hour'] < 20))]
-
-    # Include CPU, exclude hour if not useful
-    day_tbl = day_df.drop(columns=['Timestamp', 'hour']).tail(n_points).to_csv(index=False)
-    night_tbl = night_df.drop(columns=['Timestamp', 'hour']).tail(n_points).to_csv(index=False)
-
-    raw = call_ai(threshold_prompt, {'day_table': day_tbl, 'night_table': night_tbl})
     return parse_json_response(raw)
 
 
@@ -97,34 +69,42 @@ else:
     st.sidebar.info(f"Using default mock data: {DATA_PATH}")
     data = load_data(DATA_PATH)
 
+
+# Filter data for selected host and metric
+st.sidebar.markdown("### Select Host and Metric")
+host = st.sidebar.selectbox("Host", ["host-01"])
+metric = st.sidebar.selectbox("Metric", ["CPU Usage"])
+
+# Add analysis button
+run_analysis = st.sidebar.button("Run Analysis")
+
 # Display data overview
 st.subheader("Latest Readings (last 10)")
 st.dataframe(data.sort_values('timestamp').tail(10), hide_index=True)
 
-# Main analysis sections
-st.subheader("Trend Analysis")
-with st.spinner("🤖 Analyzing trends via AI..."):
-    trends = analyze_trends(data)
-    st.json(trends)
+# Only run analysis if button pressed
+trends = None
+anomalies = None
+if run_analysis:
+    st.subheader("Trend Analysis")
+    with st.spinner("🤖 Analyzing trends via AI..."):
+        trends = analyze_trends(data)
+        st.json(trends)
 
-# st.subheader("Threshold Predictions")
-# with st.spinner("🤖 Predicting thresholds via AI..."):
-#     thresholds = predict_thresholds(data)
-#     st.json(thresholds)
+    st.subheader("Anomaly Detection")
+    with st.spinner("🤖 Detecting anomalies via AI..."):
+        anomalies = detect_anomalies(data)
+        st.json(anomalies)
 
-st.subheader("Anomaly Detection")
-with st.spinner("🤖 Detecting anomalies via AI..."):
-    anomalies = detect_anomalies(data)
-    st.json(anomalies)
-
-# Download combined report
-report = {'trends': trends, 'thresholds': {}, 'anomalies': anomalies}
-st.download_button(
-    label="Download AI Report (JSON)",
-    data=json.dumps(report, indent=2),
-    file_name='ai_report.json',
-    mime='application/json'
-)
+# Only show download if analysis was run
+if trends is not None and anomalies is not None:
+    report = {'trends': trends, 'thresholds': {}, 'anomalies': anomalies}
+    st.download_button(
+        label="Download AI Report (JSON)",
+        data=json.dumps(report, indent=2),
+        file_name='ai_report.json',
+        mime='application/json'
+    )
 
 st.markdown("---")
 st.markdown("Built with Streamlit, LangChain RunnableSequence & Local Ollama LLM.")
