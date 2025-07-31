@@ -12,7 +12,7 @@ def detect_anomalies_iso(df, contamination=0.005):
     Return df with 'anomaly' column  (-1 = outlier, 1 = normal)
     Down-samples to 5-min averages for speed.
     """
-    cpu_5 = df.set_index("timestamp")["cpu_usage_percent"].resample("5T").mean()
+    cpu_5 = df.set_index("timestamp")["cpu_usage_percent"].resample("5min").mean()
     cpu_5 = cpu_5.to_frame(name="y")
     train = cpu_5.loc[: "2025-05-31 23:59:59"]
 

@@ -54,7 +54,7 @@ trend_prompt = PromptTemplate(
     input_variables=["trend_payload"],
     template = """
 You are an SRE capacity-planning assistant.
-ALWAYS reply with **valid JSON only** (no markdown, no code fences).
+ALWAYS reply with **valid JSON only** (no markdown, no code fences), double-quoted keys and strings and dates.
 
 # Data schema (read carefully)
 {{
@@ -126,35 +126,45 @@ Output
 )
 
 anomaly_prompt = PromptTemplate(
-    input_variables=["payload"],
- template = """
-You are an SRE incident-insights assistant.
-Always reply in valid JSON only (no markdown, no code fences).
+    input_variables=["anomaly_payload"],
+    template = """
+You are an SRE **anomaly-triage assistant**.
 
-# Data schema
+ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quoted keys and strings and dates.
+
+# Data schema you receive
 {{
-"total_anomalies_last_24h": int,
-"total_anomalies_last_7d": int,
-"most_recent_anomaly_time": str|null,
-"most_recent_anomaly_score": float|null,
-"worst_anomaly_score_last_24h": float|null
+  "generated_at":                ISO-8601 timestamp of this snapshot
+, "anomaly_method":              "isolation_forest"
+, "score_sign":                  string  // tells you sign convention
+, "score_hint":                  string  // qualitative guide
+, "total_anomalies_last_24h":    int
+, "total_anomalies_last_7d":     int
+, "most_recent_anomaly_time":    ISO-8601
+, "most_recent_cpu_pct":         float   // CPU % at that moment
+, "most_recent_anomaly_score":   float   // negative ⇒ outlier
+, "most_recent_severity":        "none" | "mild" | "moderate" | "high" | "critical"
+, "worst_anomaly_time_last_24h": ISO-8601
+, "worst_cpu_pct_last_24h":      float
+, "worst_anomaly_score_last_24h":float
+, "worst_severity_last_24h":     "none" | "mild" | "moderate" | "high" | "critical"
 }}
 
 # Data
-{payload}
+{anomaly_payload}
 
-# What to output
-Return exactly this JSON structure:
-
+# Produce EXACTLY this JSON object:
 {{
-  "summary":        "<concise sentence (<=120 chars)>",
-  "severity":       "none" | "low" | "moderate" | "high" | "critical",
-  "latest_time":    "<copy of most_recent_anomaly_time or n/a>",
-  "action":         "<one-sentence recommended next step>",
-  "justification":  "<why you chose this severity>",
-  "confidence":     0-100  // subjective confidence %
+  "summary":        "<short sentence for on-call chat>",
+  "severity":     "none" | "low" | "moderate" | "high" | "critical",
+  "action":         "<one concise step the on-call should take>",
+  "total_anomalies_last_7d": "<copy total_anomalies_last_7d>"
+  "most_recent_anomaly_time":"<copy most_recent_anomaly_time>"
+  "justification":  "<one sentence citing the key numbers>",
+  "confidence":     0-100 (your subjective certainty)
 }}
 
-Only JSON, nothing else.
+ONLY JSON – no extra text.
 """
+
 )
