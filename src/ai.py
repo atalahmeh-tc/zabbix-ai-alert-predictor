@@ -20,7 +20,7 @@ from langchain_ollama import OllamaLLM
 
 # Initialize local Ollama LLM
 ollama_url = os.getenv("AI_HOST", "http://localhost:11434")
-ollama_model = os.getenv("AI_MODEL", "deepseek-r1:1.5b")
+ollama_model = os.getenv("AI_MODEL", "granite3-moe:latest")
 temperature = float(os.getenv("AI_TEMPERATURE", 0.2))
 try:
     llm = OllamaLLM(model=ollama_model, base_url=ollama_url, temperature=temperature)
