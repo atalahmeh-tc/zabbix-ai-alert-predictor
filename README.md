@@ -2,6 +2,8 @@
 
 An AI-powered system that predicts infrastructure alerts before they happen, moving from reactive threshold-based monitoring to proactive, intelligent alerting.
 
+**[Demo Link](https://drive.google.com/file/d/1cF5zyDYZwbCR_cdkY72xE3TiZh1UoCRB/view?usp=sharing)**
+
 ## 🔍 Problem Statement
 
 Modern infrastructure monitoring tools like Zabbix generate alerts after static thresholds are crossed (e.g., CPU > 90%). These alerts are reactive, often noisy, and disruptive (e.g., waking up staff at 2 AM). The goal is to move from threshold-based alerting to predictive, behavior-aware alerting.
