@@ -146,6 +146,7 @@ open http://localhost:8501
 
 For troubleshooting and development:
 
+```bash
 #### Check container status
 
 make status
@@ -164,6 +165,7 @@ make logs-app # Streamlit app only
 #### Quick restart workflow
 
 make reset # Full reset and restart
+```
 
 ## 🧪 Testing
 
