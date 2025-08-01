@@ -13,7 +13,6 @@ services:
       - "8501:8501"
     volumes:
       - ./src:/app
-      - ./mock:/app/mock
     depends_on:
       - db
       - ollama
@@ -24,7 +23,7 @@ services:
     restart: unless-stopped
     command: ["/bin/sh", "/init-db.sh"]
     volumes:
-      - db_data:/db
+      - ./src/db:/db
       - ./init-db.sh:/init-db.sh:ro
 
   ollama:
@@ -34,18 +33,4 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama:/root/.ollama
-
-volumes:
-  ollama:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./ollama
-  db_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./db
+      - ./ollama:/root/.ollama
