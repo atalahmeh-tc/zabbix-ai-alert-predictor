@@ -15,6 +15,15 @@ This proof-of-concept system:
 - **Visualizes** predictions and risk explanations in a Streamlit dashboard
 - **Stores** results and maintains prediction history
 
+## 🎯 Features
+
+- **Predictive Alerting**: Uses AI to predict alerts before they occur
+- **Real-time Dashboard**: Interactive Streamlit interface showing metrics and predictions
+- **Historical Analysis**: Track prediction accuracy and system performance over time
+- **Containerized Deployment**: Easy setup with Docker and Docker Compose
+- **Local AI**: Uses Ollama for privacy-focused, on-premises AI predictions
+- **Synthetic Data**: Built-in data generator for testing and demonstration
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -63,8 +72,6 @@ docker exec ollama ollama pull llama3.2
 
 ## 🏗️ Architecture
 
-## 🏗️ Architecture
-
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Data Source   │    │   AI Predictor  │    │   Dashboard     │
@@ -84,59 +91,7 @@ docker exec ollama ollama pull llama3.2
                        └─────────────────┘
 ```
 
-## 📂 Project Structure
-
-```
-zabbix-ai-alert-predictor/
-├── bin/
-│   ├── data_generator.py        # Generates synthetic monitoring data
-│   ├── mock_predictor.py        # Mock predictor for testing
-│   └── test_ollama.py          # Ollama API testing utility
-├── dashboard/
-│   └── app.py                   # Streamlit dashboard
-├── data/
-│   └── mock_zabbix_data.csv # Sample monitoring data
-├── src/
-│   ├── predictor.py             # AI prediction logic (Ollama)
-│   └── db.py                    # Database operations
-├── docker-compose.yml           # Container orchestration
-├── Dockerfile                   # Application container
-├── Makefile                     # Build and run automation
-├── requirements.txt             # Python dependencies
-├── predictions.db               # SQLite database
-└── README.md                    # This file
-```
-
-### Directory Structure
-
-- **`bin/`** - Utility scripts and tools
-
-  - `data_generator.py` - Creates synthetic monitoring data with anomalies
-  - `mock_predictor.py` - Mock prediction service for testing
-  - `test_ollama.py` - Ollama API connectivity and model testing utility
-
-- **`src/`** - Core application logic
-
-  - `predictor.py` - AI prediction engine using Ollama
-  - `db.py` - Database operations and data persistence
-
-- **`dashboard/`** - Web interface
-
-  - `app.py` - Streamlit dashboard for visualization and interaction
-
-- **`data/`** - Data storage
-  - Contains generated CSV files and sample datasets
-
-## 🎯 Features
-
-- **Predictive Alerting**: Uses AI to predict alerts 15 minutes before they occur
-- **Real-time Dashboard**: Interactive Streamlit interface showing metrics and predictions
-- **Historical Analysis**: Track prediction accuracy and system performance over time
-- **Containerized Deployment**: Easy setup with Docker and Docker Compose
-- **Local AI**: Uses Ollama for privacy-focused, on-premises AI predictions
-- **Synthetic Data**: Built-in data generator for testing and demonstration
-
-## �️ Development
+## 🛠️ Development
 
 ### Available Make Commands
 
@@ -164,76 +119,51 @@ make reset           # Full reset: clean and start fresh
 
 1. **Clone and navigate to the project**
 
-   ```bash
-   git clone <repository-url>
-   cd zabbix-ai-alert-predictor
-   ```
+```bash
+git clone git@github.com:atalahmeh-tc/zabbix-ai-alert-predictor.git
+cd zabbix-ai-alert-predictor
+```
 
 2. **Install Python dependencies**
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-3. **Start Ollama (if running locally)**
+3. **Build and Run the containers**
 
-   ```bash
-   # Install Ollama first, then:
-   ollama pull llama3.2
-   ollama serve
-   ```
+```bash
+make start
+```
 
-4. **Run the dashboard**
-   ```bash
-   streamlit run src/app.py
-   ```
+3. **Open the Dashboard UI**
+
+```bash
+open http://localhost:8501
+```
 
 ### Debugging and Development
 
 For troubleshooting and development:
 
-```bash
-# Check container status
+#### Check container status
+
 make status
 
-# Access container shells for debugging
-make shell-ollama    # Debug Ollama container
-make shell-app       # Debug Streamlit app container
+#### Access container shells for debugging
 
-# Monitor logs in real-time
-make logs           # All containers
-make logs-ollama    # Ollama only
-make logs-app       # Streamlit app only
+make shell-ollama # Debug Ollama container
+make shell-app # Debug Streamlit app container
 
-# Quick restart workflow
-make restart        # Restart all containers
-make reset          # Full reset and restart
-```
+#### Monitor logs in real-time
 
-## 🔧 Configuration
+make logs # All containers
+make logs-ollama # Ollama only
+make logs-app # Streamlit app only
 
-### Environment Variables
+#### Quick restart workflow
 
-Create a `.env` file for local configuration:
-
-```bash
-# Ollama Configuration
-AI_HOST=http://localhost:11434
-AI_MODEL=llama3.2:3b
-
-# Database
-DATABASE_PATH=predictions.db
-
-# Dashboard
-STREAMLIT_PORT=8501
-```
-
-### Docker Configuration
-
-The application uses Docker Compose with two services:
-
-- **app**: Streamlit dashboard (port 8501)
-- **ollama**: AI model server (port 11434)
+make reset # Full reset and restart
 
 ## 🧪 Testing
 
@@ -250,39 +180,11 @@ curl -X POST http://localhost:11434/api/generate \
   -d '{"model": "llama3.2", "prompt": "Test prompt", "stream": false}'
 ```
 
-### Generate Test Data
-
-```bash
-python bin/data_generator.py
-```
-
 ### Test Ollama API
 
 ```bash
 python bin/test_ollama.py
 ```
-
-## 📊 Usage
-
-1. **Access the Dashboard**: Open http://localhost:8501
-2. **Load Data**: Upload CSV files or use generated sample data
-3. **View Predictions**: See AI-generated alert predictions and explanations
-4. **Monitor Trends**: Track system metrics and prediction accuracy
-
-## 🔄 Workflow
-
-1. **Data Ingestion**: Load monitoring metrics (CPU, disk, network)
-2. **AI Analysis**: Ollama analyzes recent trends and patterns
-3. **Prediction**: AI predicts likelihood of alerts in next 15 minutes
-4. **Visualization**: Dashboard shows predictions with explanations
-5. **Storage**: Results saved to SQLite database for historical analysis
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes and test
-4. Submit a pull request
 
 ## 📝 License
 

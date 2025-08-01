@@ -58,31 +58,45 @@ def ai_to_prediction_record(host: str, metric: str, data: dict) -> dict:
     # message TEXT,
     # trend TEXT,
     # breach_time TEXT,
+    # predicted_value REAL,
     # anomaly_detected INTEGER,
     # explanation TEXT,
     # recommendation TEXT,
-    # suggested_threshold JSON,  # e.g. {"day": 75, "night": 90}
-    # metadata JSON,
+    # suggested_threshold TEXT,  # e.g. {"day": 75, "night": 90}
+    # metadata TEXT,  # JSON string of additional metadata
     # created_at TEXT DEFAULT CURRENT_TIMESTAMP
 
     # Extracting trends and anomalies from the data
     trends = data.get("trends", {})
     anomalies = data.get("anomalies", {})
 
+    # Default values if keys are missing
+    suggested_threshold_default = {
+        # Prediction thresholds based on time of day
+        "day": 75,
+        "night": 90
+    }
+
+    # Make cpu_at_breach short percentage
+    if "cpu_at_breach" in trends:
+        try:
+            cpu_value = float(trends["cpu_at_breach"])
+            trends["cpu_at_breach"] = f"{cpu_value:.1f}%"
+        except (ValueError, TypeError):
+            pass
+
     # Mapping AI results to prediction record
     trend = "increasing" if trends.get("severity") in ["high", "critical"] else "stable"
     anomaly_detected = 1 if anomalies.get("severity") in ["high", "critical"] else 0
     breach_time = trends.get("breach_time", "N/A")
+    predicted_value = trends.get("cpu_at_breach", "N/A")
     status = "alert" if (trend == "increasing" or anomaly_detected) else "normal"
     message = f"{trends.get('summary', '')} {anomalies.get('summary', '')}".strip()
     explanation = f"{trends.get('justification', '')} {anomalies.get('justification', '')}".strip()
     recommendation = f"{trends.get('action', '')} {anomalies.get('action', '')}".strip()
-    suggested_threshold = trends.get("threshold_percent", {
-        # Prediction thresholds based on time of day
-        "day": 75,
-        "night": 90
-    })
-    
+    suggested_threshold = json.dumps(trends.get("threshold_percent", suggested_threshold_default))
+    metadata = json.dumps({"trends": trends,"anomalies": anomalies})
+
     return {
         "host": host,
         "metric": metric,
@@ -90,12 +104,10 @@ def ai_to_prediction_record(host: str, metric: str, data: dict) -> dict:
         "message": message,
         "trend": trend,
         "breach_time": breach_time,
+        "predicted_value": predicted_value,
         "anomaly_detected": anomaly_detected,
         "explanation": explanation,
         "recommendation": recommendation,
         "suggested_threshold": suggested_threshold,
-        "metadata": {
-            "trends": trends,
-            "anomalies": anomalies
-        }
+        "metadata": metadata
     }

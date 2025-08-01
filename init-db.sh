@@ -26,11 +26,12 @@ CREATE TABLE IF NOT EXISTS predictions (
     message TEXT,
     trend TEXT,
     breach_time TEXT,
+    predicted_value REAL,
     anomaly_detected INTEGER,
     explanation TEXT,
     recommendation TEXT,
-    suggested_threshold JSON,
-    metadata JSON,
+    suggested_threshold TEXT,
+    metadata TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 EOF

@@ -2,17 +2,17 @@
 # Description: A Streamlit dashboard that uses a local Ollama LLM to analyze Zabbix monitoring data.
 # It provides insights on trends, predicts thresholds, and detects anomalies in system metrics.
 
-import json
-import streamlit as st
+import numpy as np
 import pandas as pd
 import altair as alt
-import numpy as np
+import streamlit as st
+from datetime import datetime, timezone, timedelta
 
 # Import AI functions and prompts
 from ai import call_ai, trend_prompt, anomaly_prompt
-from utils import load_data, parse_json_response
 from predictive import detect_anomalies_iso, forecast_trend
-from datetime import datetime, timezone, timedelta
+from db import fetch_predictions, insert_prediction
+from utils import ai_to_prediction_record, load_data, parse_json_response
 
 # ------------------
 # Insights Functions
@@ -138,7 +138,7 @@ host = st.sidebar.selectbox("Host", ["host-01"])
 metric = st.sidebar.selectbox("Metric", ["CPU Usage"])
 
 # Add analysis button
-run_analysis = st.sidebar.button("Analyze", use_container_width=True)
+run_analyze = st.sidebar.button("Analyze", use_container_width=True)
 
 # Display data overview
 st.subheader("Latest Readings (last 5)")
@@ -155,7 +155,7 @@ st.dataframe(
 # Only run analysis if button pressed
 trends = None
 anomalies = None
-if run_analysis:
+if run_analyze:
     # Trend Analysis
     st.markdown("---")
     st.subheader("Trend Analysis")
@@ -171,7 +171,24 @@ if run_analysis:
     # --- Send to AI ---
     with st.spinner("🤖 Analyzing trends via AI..."):
         trends = analyze_trends(data)
-        st.json(trends)
+        st.markdown("### Trend Analysis Summary")
+        if trends:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Severity", trends.get("severity", "N/A"))
+            col2.metric("Lead Time (days)", trends.get("lead_time_days", "N/A"))
+            col3.metric("CPU at Breach (%)", f"{float(trends.get('cpu_at_breach', 0)):.2f}")
+            col4.metric("Confidence (%)", f"{float(trends.get('confidence', 0)):.2f}")
+            st.info(trends.get("summary", ""))
+            with st.expander(f"Explanation and Recommendation"):
+                st.markdown(f"""
+                <div style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
+                            border-radius: 12px; padding: 1.2em 1.5em; margin-bottom: 1em; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <h4 style="color:#2b5876; margin-top:0;">Explanation</h4>
+                    <p style="font-size:1.05em; color:#333;">{trends.get("justification", "No explanation available.")}</p>
+                    <h4 style="color:#2b5876; margin-bottom:0;">Recommendation</h4>
+                    <p style="font-size:1.05em; color:#333;">{trends.get("action", "No recommendation available.")}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
 
     # Anomaly Detection
@@ -194,17 +211,39 @@ if run_analysis:
     # --- Send to AI ---
     with st.spinner("🤖 Analyzing anomalies via AI..."):
         anomalies = detect_anomalies(data)
-        st.json(anomalies)
+        st.markdown("### Anomaly Detection Summary")
+        if anomalies:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Severity", anomalies.get("severity", "N/A"))
+            col2.metric("Total Anomalies (24h)", anomalies.get("total_anomalies_last_24", "N/A"))
+            col3.metric("Worst CPU (%)", f"{float(anomalies.get('worst_cpu_pct_last_24h', 0)):.2f}")
+            col4.metric("Confidence (%)", f"{float(anomalies.get('confidence', 0)):.2f}")
+            st.info(anomalies.get("summary", ""))
+            with st.expander(f"Explanation and Recommendation"):
+                st.markdown(f"""
+                <div style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
+                            border-radius: 12px; padding: 1.2em 1.5em; margin-bottom: 1em; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <h4 style="color:#2b5876; margin-top:0;">Explanation</h4>
+                    <p style="font-size:1.05em; color:#333;">{anomalies.get("justification", "No explanation available.")}</p>
+                    <h4 style="color:#2b5876; margin-bottom:0;">Recommendation</h4>
+                    <p style="font-size:1.05em; color:#333;">{anomalies.get("action", "No recommendation available.")}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-# Only show download if analysis was run
-if trends is not None and anomalies is not None:
-    report = {'trends': trends, 'anomalies': anomalies}
-    st.download_button(
-        label="Download AI Report (JSON)",
-        data=json.dumps(report, indent=2),
-        file_name='ai_report.json',
-        mime='application/json'
-    )
+# Insert AI results into prediction record
+if trends or anomalies:
+    with st.spinner("💾 Saving prediction record to database..."):
+        prediction_record = ai_to_prediction_record(host, metric, {"trends": trends, "anomalies": anomalies})
+        insert_prediction(prediction_record)
 
+# Display saved predictions as a table via fetch_predictions function
+saved_predictions = fetch_predictions()
+if not saved_predictions.empty:
+    st.markdown("---")
+    st.markdown("### Predictions History")
+    with st.expander("Show Predictions History", expanded=True):
+        st.dataframe(saved_predictions, hide_index=True)
+
+# Footer
 st.markdown("---")
-st.markdown("Built with Streamlit, LangChain RunnableSequence & Local Ollama LLM.")
+st.markdown("Built with Streamlit, LangChain & Local Ollama LLM. Tucows Domains AI Hackathon ❤️.")

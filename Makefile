@@ -24,7 +24,6 @@ help:
 	@echo "  shell-app   		- Open shell in Streamlit app container"
 	@echo "  start       		- Quick start: build and run everything"
 	@echo "  reset       		- Full reset: clean and start fresh"
-	@echo "  generate        	- Generate mock Zabbix data for testing"
 
 # Build all images
 build:
