@@ -1,5 +1,9 @@
 # src/ai.py
 
+"""AI Functions
+Module for handling AI interactions and prompts
+"""
+
 import os
 import sys
 import streamlit as st
@@ -11,8 +15,6 @@ from utils import get_logger
 
 logger = get_logger(__name__)
 
-
-
 # ------------------
 # LLM Setup: Local Ollama Only
 # ------------------
@@ -20,11 +22,25 @@ from langchain.prompts import PromptTemplate
 from langchain_ollama import OllamaLLM
 
 # Initialize local Ollama LLM
-ollama_url = os.getenv("AI_HOST", "http://localhost:11434")
-ollama_model = os.getenv("AI_MODEL", None)
-temperature = float(os.getenv("AI_TEMPERATURE", 0.2))
+OLLAMA_HOST = os.getenv("AI_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("AI_MODEL", None)
+OLLAMA_TEMPERATURE = float(os.getenv("AI_TEMPERATURE", 0.2))
+
+# Validate OLLAMA required environment variables are set
+if not all([OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_TEMPERATURE]):
+    missing_vars = []
+    if not OLLAMA_HOST:
+        missing_vars.append("OLLAMA_HOST")
+    if not OLLAMA_MODEL:
+        missing_vars.append("OLLAMA_MODEL")
+    if not OLLAMA_TEMPERATURE:
+        missing_vars.append("OLLAMA_TEMPERATURE")
+    raise ValueError(
+        f"Missing required environment variables: {', '.join(missing_vars)}. Please check your .env file."
+    )
+
 try:
-    llm = OllamaLLM(model=ollama_model, base_url=ollama_url, temperature=temperature)
+    llm = OllamaLLM(model=OLLAMA_MODEL, base_url=OLLAMA_HOST, temperature=OLLAMA_TEMPERATURE)
 except Exception as e:
     st.error(f"⚠️ Failed to initialize Ollama LLM: {e}")
     sys.exit(1)
@@ -47,6 +63,7 @@ def call_ai(prompt: PromptTemplate, inputs: dict) -> str:
     chain = (lambda x: final_prompt) | llm
 
     return chain.invoke(inputs)
+
 # ------------------
 # Prompt templates
 # ------------------
@@ -76,7 +93,7 @@ ALWAYS reply with **valid JSON only** (no markdown, no code fences), double-quot
 # Produce EXACTLY this JSON object structure, dont miss any key:
 {{
   "summary": "<short sentence summary>",
-  "severity": "none" | "low" | "moderate" | "high" | "critical",
+  "severity": "Normal" | "Low" | "Moderate" | "High" | "Critical",
   "breach_time": "<copy first_median_breach_expected or 'n/a'>",
   "cpu_at_breach": "<copy predicted_cpu_at_breach or 'n/a'>",
   "lead_time_days": "<copy days_until_breach or 'n/a'>",
@@ -107,11 +124,11 @@ ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quote
 , "most_recent_anomaly_time":    ISO-8601
 , "most_recent_cpu_pct":         float   // CPU % at that moment
 , "most_recent_anomaly_score":   float   // negative ⇒ outlier
-, "most_recent_severity":        "none" | "mild" | "moderate" | "high" | "critical"
+, "most_recent_severity":        "Normal" | "Mild" | "Moderate" | "High" | "Critical"
 , "worst_anomaly_time_last_24h": ISO-8601
 , "worst_cpu_pct_last_24h":      float
 , "worst_anomaly_score_last_24h":float
-, "worst_severity_last_24h":     "none" | "mild" | "moderate" | "high" | "critical"
+, "worst_severity_last_24h":     "Normal" | "Mild" | "Moderate" | "High" | "Critical"
 }}
 
 # Data
@@ -120,7 +137,7 @@ ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quote
 # Produce EXACTLY this JSON object structure, dont miss any key:
 {{
   "summary":        "<short sentence summary>",
-  "severity":     "none" | "low" | "moderate" | "high" | "critical",
+  "severity":     "Normal" | "Low" | "Moderate" | "High" | "Critical",
   "action":         "<one concise step the on-call should take>",
   "total_anomalies_last_24": "<copy total_anomalies_last_24h>",
   "worst_cpu_pct_last_24h": "<copy worst_cpu_pct_last_24h>",

@@ -1,4 +1,5 @@
 # src/utils.py
+
 import re
 import json
 import logging
@@ -45,6 +46,46 @@ def parse_json_response(raw: str):
         st.error("⚠️ Unable to parse AI response as JSON:")
         st.code(raw, language="text")
         return {}
+
+# Function to safely convert values to float, handling common units
+def safe_float_convert(value):
+    """Safely convert a value to float, handling units like % at the end"""
+    if value is None:
+        return 0.0
+    
+    # Convert to string first
+    str_value = str(value).strip()
+    
+    # If empty string, return 0
+    if not str_value:
+        return 0.0
+    
+    # Remove common units that might be at the end
+    units_to_remove = ['%', 'MB', 'GB', 'Mbps', ' MB', ' GB', ' Mbps']
+    for unit in units_to_remove:
+        if str_value.endswith(unit):
+            str_value = str_value[:-len(unit)].strip()
+            break
+    
+    try:
+        return float(str_value)
+    except (ValueError, TypeError):
+        return 0.0
+
+# Function to get appropriate unit for metric display
+def get_metric_unit(metric_name):
+    """Get appropriate unit for metric display"""
+    metric_lower = metric_name.lower()
+    if "cpu" in metric_lower or "percent" in metric_lower:
+        return "%"
+    elif "memory" in metric_lower or "ram" in metric_lower:
+        return " MB"
+    elif "disk" in metric_lower or "storage" in metric_lower:
+        return " GB"
+    elif "network" in metric_lower or "bandwidth" in metric_lower:
+        return " Mbps"
+    else:
+        return ""
 
 # Function to convert AI results to a prediction record
 def ai_to_prediction_record(host: str, metric: str, data: dict) -> dict:
