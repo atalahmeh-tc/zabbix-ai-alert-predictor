@@ -5,10 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: zabbix_ai_app
     restart: unless-stopped
-    environment:
-      - AI_HOST=http://zabbix_ai_ollama:11434
-      - AI_MODEL=llama3.1:8b
-      - AI_TEMPERATURE=0.2
+    env_file:
+      - .env
     ports:
       - "8501:8501"
     volumes:

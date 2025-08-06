@@ -5,3 +5,4 @@ langchain
 langchain-ollama
 scikit-learn
 prophet
+python-dotenv

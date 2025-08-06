@@ -1,5 +1,9 @@
 # src/ai.py
 
+"""AI Functions
+Module for handling AI interactions and prompts
+"""
+
 import os
 import sys
 import streamlit as st
@@ -11,8 +15,6 @@ from utils import get_logger
 
 logger = get_logger(__name__)
 
-
-
 # ------------------
 # LLM Setup: Local Ollama Only
 # ------------------
@@ -20,11 +22,25 @@ from langchain.prompts import PromptTemplate
 from langchain_ollama import OllamaLLM
 
 # Initialize local Ollama LLM
-ollama_url = os.getenv("AI_HOST", "http://localhost:11434")
-ollama_model = os.getenv("AI_MODEL", None)
-temperature = float(os.getenv("AI_TEMPERATURE", 0.2))
+OLLAMA_HOST = os.getenv("AI_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("AI_MODEL", None)
+OLLAMA_TEMPERATURE = float(os.getenv("AI_TEMPERATURE", 0.2))
+
+# Validate OLLAMA required environment variables are set
+if not all([OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_TEMPERATURE]):
+    missing_vars = []
+    if not OLLAMA_HOST:
+        missing_vars.append("OLLAMA_HOST")
+    if not OLLAMA_MODEL:
+        missing_vars.append("OLLAMA_MODEL")
+    if not OLLAMA_TEMPERATURE:
+        missing_vars.append("OLLAMA_TEMPERATURE")
+    raise ValueError(
+        f"Missing required environment variables: {', '.join(missing_vars)}. Please check your .env file."
+    )
+
 try:
-    llm = OllamaLLM(model=ollama_model, base_url=ollama_url, temperature=temperature)
+    llm = OllamaLLM(model=OLLAMA_MODEL, base_url=OLLAMA_HOST, temperature=OLLAMA_TEMPERATURE)
 except Exception as e:
     st.error(f"⚠️ Failed to initialize Ollama LLM: {e}")
     sys.exit(1)
