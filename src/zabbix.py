@@ -45,7 +45,6 @@ _AUTH_TOKEN = None
 _TOKEN_EXPIRY = None
 
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
 def zabbix_api(method, params, auth=None):
     """Make API call to Zabbix"""
     headers = {"Content-Type": "application/json-rpc"}

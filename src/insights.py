@@ -48,8 +48,8 @@ def analyze_trends(
     future_mask = forecast_df["ds"] > df["timestamp"].max()
     peak_value_future = float(forecast_df.loc[future_mask, "yhat"].max())
 
-    # Handle cutoff_ts variable - convert to datetime64[ns] for pandas query compatibility
-    cutoff_ts = pd.to_datetime(now)
+    # Handle cutoff_ts variable - ensure compatible datetime types for pandas query
+    cutoff_ts = now.tz_localize(None) if now.tz is not None else now
 
     trend_payload = {
         "generated_at": now.isoformat(),
@@ -139,7 +139,7 @@ def detect_anomalies(df: pd.DataFrame, value_column="value", metric_name="metric
 def _anom_severity(score: float) -> str:
     """Classify anomaly severity based on score"""
     if score >= 0:
-        return "none"
+        return "normal"
     if score > -0.05:
         return "mild"
     if score > -0.15:

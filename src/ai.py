@@ -63,6 +63,7 @@ def call_ai(prompt: PromptTemplate, inputs: dict) -> str:
     chain = (lambda x: final_prompt) | llm
 
     return chain.invoke(inputs)
+
 # ------------------
 # Prompt templates
 # ------------------
@@ -92,7 +93,7 @@ ALWAYS reply with **valid JSON only** (no markdown, no code fences), double-quot
 # Produce EXACTLY this JSON object structure, dont miss any key:
 {{
   "summary": "<short sentence summary>",
-  "severity": "none" | "low" | "moderate" | "high" | "critical",
+  "severity": "Normal" | "Low" | "Moderate" | "High" | "Critical",
   "breach_time": "<copy first_median_breach_expected or 'n/a'>",
   "cpu_at_breach": "<copy predicted_cpu_at_breach or 'n/a'>",
   "lead_time_days": "<copy days_until_breach or 'n/a'>",
@@ -123,11 +124,11 @@ ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quote
 , "most_recent_anomaly_time":    ISO-8601
 , "most_recent_cpu_pct":         float   // CPU % at that moment
 , "most_recent_anomaly_score":   float   // negative ⇒ outlier
-, "most_recent_severity":        "none" | "mild" | "moderate" | "high" | "critical"
+, "most_recent_severity":        "Normal" | "Mild" | "Moderate" | "High" | "Critical"
 , "worst_anomaly_time_last_24h": ISO-8601
 , "worst_cpu_pct_last_24h":      float
 , "worst_anomaly_score_last_24h":float
-, "worst_severity_last_24h":     "none" | "mild" | "moderate" | "high" | "critical"
+, "worst_severity_last_24h":     "Normal" | "Mild" | "Moderate" | "High" | "Critical"
 }}
 
 # Data
@@ -136,7 +137,7 @@ ALWAYS reply with **valid JSON ONLY** – no markdown, no comments, double-quote
 # Produce EXACTLY this JSON object structure, dont miss any key:
 {{
   "summary":        "<short sentence summary>",
-  "severity":     "none" | "low" | "moderate" | "high" | "critical",
+  "severity":     "Normal" | "Low" | "Moderate" | "High" | "Critical",
   "action":         "<one concise step the on-call should take>",
   "total_anomalies_last_24": "<copy total_anomalies_last_24h>",
   "worst_cpu_pct_last_24h": "<copy worst_cpu_pct_last_24h>",
