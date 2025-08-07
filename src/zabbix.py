@@ -202,5 +202,4 @@ def fetch_zabbix_data(item_id, days_back=30):
     else:
         progress_bar.empty()
         status_text.empty()
-        st.warning("No data found for the selected host and metric.")
         return None

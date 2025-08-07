@@ -11,25 +11,11 @@ from db import fetch_predictions, insert_prediction
 from utils import ai_to_prediction_record, load_data, get_metric_unit, safe_float_convert
 from zabbix import (
     get_auth_token,
-    ensure_auth_token,
     get_hosts,
     get_metrics_for_host,
     fetch_zabbix_data,
 )
 from insights import analyze_trends, detect_anomalies, get_threshold
-
-# ------------------
-# Helper Functions
-# ------------------
-
-def reset_state():
-    """Clear all data-related session state"""
-    st.session_state.data = None
-    st.session_state.selected_host = None
-    st.session_state.selected_metric = None
-    st.session_state.metric_name = None
-    st.session_state.value_column = "value"
-    st.session_state.zabbix_connected = None
 
 # ------------------
 # Streamlit UI
@@ -39,16 +25,10 @@ st.set_page_config(page_title="Predictive Monitoring Dashboard", layout="wide")
 st.title("📊 Predictive Monitoring Dashboard")
 
 # Initialize session state
-if "data" not in st.session_state:
-    st.session_state.data = None
-if "selected_host" not in st.session_state:
-    st.session_state.selected_host = None
-if "selected_metric" not in st.session_state:
-    st.session_state.selected_metric = None
-if "metric_name" not in st.session_state:
-    st.session_state.metric_name = None
-if "value_column" not in st.session_state:
-    st.session_state.value_column = "value"
+# This is to ensure we have a clean state for the dashboard
+# Only keep connection status in session state
+if "zabbix_connected" not in st.session_state:
+    st.session_state.zabbix_connected = None
 
 # Sidebar for data selection
 st.sidebar.markdown("### Data Source")
@@ -61,10 +41,12 @@ if "current_data_source" not in st.session_state:
     st.session_state.current_data_source = data_source
 elif st.session_state.current_data_source != data_source:
     # Data source changed, clear all data-related session state
-    reset_state()
+    st.session_state.zabbix_connected = None
     st.session_state.current_data_source = data_source
 
+# Initialize variables
 data = None
+run_analysis = False
 
 if data_source == "Live Zabbix Data":
     # Initialize connection status if not exists
@@ -80,8 +62,9 @@ if data_source == "Live Zabbix Data":
             else:
                 st.session_state.zabbix_connected = False
 
-    # Display styled connection status
+    # Show connection status & host/metric selection
     if st.session_state.zabbix_connected:
+        # Display connection status with animation
         st.sidebar.markdown(
             """
             <div style="
@@ -120,6 +103,58 @@ if data_source == "Live Zabbix Data":
             """,
             unsafe_allow_html=True,
         )
+
+        # Sidebar for host and metric selection
+        st.sidebar.markdown("### Select Host and Metric")
+        hosts = get_hosts()
+        if hosts:
+            host_options = {host["host"]: host for host in hosts}
+            selected_host_display = st.sidebar.selectbox(
+                "Select Host:", options=list(host_options.keys()), index=0,
+            )
+            selected_host = host_options[selected_host_display]
+
+            # Get metrics for selected host
+            if selected_host:
+                metrics = get_metrics_for_host(selected_host["hostid"])
+                if metrics:
+                    metric_options = {metric["name"]: metric for metric in metrics}
+                    selected_metric_display = st.sidebar.selectbox(
+                        "Select Metric:",
+                        options=list(metric_options.keys()),
+                        index=0,
+                    )
+                    selected_metric = metric_options[selected_metric_display]
+
+                    # Days to fetch
+                    days_back = st.sidebar.slider(
+                        "Days of historical data:", 1, 90, 30, key="days_back_slider"
+                    )
+
+                    # 📥 AI Analysis button that fetches data and runs analysis
+                    run_analysis = st.sidebar.button("🔍 Run AI Analysis", use_container_width=True, type="primary")
+                    
+                    if run_analysis:
+                        # Fetch data and run analysis immediately
+                        with st.spinner("Fetching Zabbix data..."):
+                            data = fetch_zabbix_data(
+                                selected_metric["itemid"],
+                                days_back,
+                            )
+                            
+                            if data is not None:
+                                host = selected_host["host"]
+                                metric = selected_metric["name"]
+                                metric_name = selected_metric["name"]
+                                value_column = "value"
+                            else:
+                                st.sidebar.warning("No data found for the selected host and metric.")
+                else:
+                    st.sidebar.warning("No metrics found for this host.")
+            else:
+                st.sidebar.warning("No host selected.")
+        else:
+            st.sidebar.error("Could not fetch hosts from Zabbix.")
     else:
         st.sidebar.markdown(
             """
@@ -151,70 +186,7 @@ if data_source == "Live Zabbix Data":
             """,
             unsafe_allow_html=True,
         )
-
-    # Only show host/metric selection if connected or connection status is unknown
-    if st.session_state.zabbix_connected != False:
-        st.sidebar.markdown("### Select Host and Metric")
-
-        # Get hosts only if we can authenticate
-        auth_token = ensure_auth_token()
-        if auth_token:
-            hosts = get_hosts()
-            if hosts:
-                host_options = {host["host"]: host for host in hosts}
-                selected_host_display = st.sidebar.selectbox(
-                    "Select Host:", options=list(host_options.keys()), index=0
-                )
-                selected_host = host_options[selected_host_display]
-
-                # Get metrics for selected host
-                if selected_host:
-                    metrics = get_metrics_for_host(selected_host["hostid"])
-                    if metrics:
-                        metric_options = {metric["name"]: metric for metric in metrics}
-                        selected_metric_display = st.sidebar.selectbox(
-                            "Select Metric:",
-                            options=list(metric_options.keys()),
-                            index=0,
-                        )
-                        selected_metric = metric_options[selected_metric_display]
-
-                        # Days to fetch
-                        days_back = st.sidebar.slider(
-                            "Days of historical data:", 1, 90, 30
-                        )
-
-                        # Fetch data button
-                        if st.sidebar.button("Fetch Data", use_container_width=True):
-                            with st.spinner("Fetching data from Zabbix..."):
-                                data = fetch_zabbix_data(
-                                    selected_metric["itemid"],
-                                    days_back,
-                                )
-                                if data is not None:
-                                    st.session_state.data = data
-                                    st.session_state.selected_host = selected_host[
-                                        "host"
-                                    ]
-                                    st.session_state.selected_metric = selected_metric[
-                                        "name"
-                                    ]
-                                    st.session_state.metric_name = selected_metric[
-                                        "name"
-                                    ]
-                                    st.session_state.value_column = "value"
-                                    st.sidebar.success(
-                                        f"✅ Fetched {len(data)} records!"
-                                    )
-                    else:
-                        st.sidebar.warning("No metrics found for this host.")
-            else:
-                st.sidebar.error("Could not fetch hosts from Zabbix.")
-        else:
-            st.sidebar.warning(
-                "⚠️ Please test the connection first or check your Zabbix credentials."
-            )
-    else:
+        # Show error message if connection is lost
         st.sidebar.error(
             "❌ Connection failed. Please check your Zabbix configuration."
         )
@@ -232,41 +204,49 @@ elif data_source == "Upload CSV File":
         "Metric Name:", value="Metric", help="Enter a custom metric name for this data"
     )
 
-    if st.sidebar.button("Fetch Data", use_container_width=True):
-        data = load_data(uploaded)
-        st.session_state.data = data
-        st.session_state.selected_host = custom_host
-        st.session_state.selected_metric = custom_metric
+    # 📥 AI Analysis button that loads data and runs analysis
+    run_analysis = st.sidebar.button("🔍 Run AI Analysis", use_container_width=True, type="primary")
+    
+    if run_analysis and uploaded is not None:
+        # Load data and run analysis immediately
+        with st.spinner("Loading CSV data..."):
+            data = load_data(uploaded)
+            
+            if data is not None:
+                # Set temporary variables for this analysis
+                host = custom_host
+                metric = custom_metric
 
-        # Try to detect the value column
-        if "value" in data.columns:
-            st.session_state.value_column = "value"
-            st.session_state.metric_name = (
-                custom_metric if custom_metric != "Metric" else "Metric Value"
-            )
-        else:
-            # Use the first numeric column after timestamp
-            numeric_cols = data.select_dtypes(include=["float64", "int64"]).columns
-            if len(numeric_cols) > 0:
-                st.session_state.value_column = numeric_cols[0]
-                st.session_state.metric_name = (
-                    custom_metric
-                    if custom_metric != "Metric"
-                    else numeric_cols[0].replace("_", " ").title()
-                )
+                # Try to detect the value column
+                if "value" in data.columns:
+                    value_column = "value"
+                    metric_name = (
+                        custom_metric if custom_metric != "Metric" else "Metric Value"
+                    )
+                else:
+                    # Use the first numeric column after timestamp
+                    numeric_cols = data.select_dtypes(include=["float64", "int64"]).columns
+                    if len(numeric_cols) > 0:
+                        value_column = numeric_cols[0]
+                        metric_name = (
+                            custom_metric
+                            if custom_metric != "Metric"
+                            else numeric_cols[0].replace("_", " ").title()
+                        )
+                    else:
+                        value_column = "value"
+                        metric_name = (
+                            custom_metric if custom_metric != "Metric" else "Metric Value"
+                        )
             else:
-                st.session_state.value_column = "value"
-                st.session_state.metric_name = (
-                    custom_metric if custom_metric != "Metric" else "Metric Value"
-                )
+                st.sidebar.error("Failed to load CSV data.")
+    elif run_analysis and uploaded is None:
+        st.sidebar.error("Please upload a CSV file first.")
 
-# Use data from session state
-if st.session_state.data is not None:
-    data = st.session_state.data
-    host = st.session_state.selected_host
-    metric = st.session_state.selected_metric
-    metric_name = st.session_state.get("metric_name", metric)
-    value_column = st.session_state.get("value_column", "value")
+
+# ------------------
+# Dashboard and Predictions History
+# ------------------
 
 # Create tabs for Dashboard and Predictions History
 tab1, tab2 = st.tabs(["📊 Dashboard", "📈 Predictions History"])
@@ -293,8 +273,8 @@ with tab1:
         )
 
         # Current Selection and Data Summary
-        st.subheader("Current Selection & Data Summary")
         # Display host, metric, total records
+        st.subheader("Current Selection & Data Summary")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Host", host)
@@ -303,8 +283,8 @@ with tab1:
         with col3:
             st.metric("Total Records", len(data))
 
-        col4, col5, col6 = st.columns(3)
         # Display date range, avg and max value
+        col4, col5, col6 = st.columns(3)
         with col4:
             st.metric(
                 "Date Range",
@@ -326,237 +306,225 @@ with tab1:
                 )
             else:
                 st.metric("Max Value", "N/A")
-    else:
-        st.info("Please select a data source and fetch data to begin analysis.", icon="👆")
-
-    # Add analyze button in main dashboard area
-    if data is not None:
-        st.markdown("---")
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            run_analyze = st.button("🔍 Run AI Analysis", use_container_width=True, type="primary")
-    else:
-        run_analyze = False
-
-    # Only run analysis if button pressed and data is available
-    trends = None
-    anomalies = None
-    if run_analyze and data is not None:
-        # Trend Analysis
-        st.markdown("---")
-        st.subheader("Trend Analysis")
-        
-        # --- Forecast chart ---
-        forecast_df, first_hit = forecast_trend(
-            data, value_column=value_column, threshold=get_threshold()
-        )
-        st.caption(f"Forecasted {metric_name.lower()} and trend")
-        st.line_chart(
-            forecast_df.set_index("ds")[["yhat", "trend"]],
-            use_container_width=True,
-            x_label="Timestamp",
-            y_label=f"{metric_name} ({get_metric_unit(metric_name)})",
-        )
-        
-        # --- Send to AI ---
-        with st.spinner("🤖 Analyzing trends via AI... (this may take up to 60 seconds)"):
-            trends = analyze_trends(
-                data, value_column=value_column, metric_name=metric_name
+    
+        # Display section for Trend Analysis and Anomaly Detection
+        trends = None
+        anomalies = None
+        if run_analysis:
+            # Trend Analysis
+            st.markdown("---")
+            st.subheader("Trend Analysis")
+            
+            # --- Forecast chart ---
+            forecast_df, first_hit = forecast_trend(
+                data, value_column=value_column, threshold=get_threshold()
             )
-            st.markdown("### Trend Analysis Summary")
-            if trends:
-                col1, col2, col3, col4 = st.columns(4)
-                
-                # Check severity level for styling
-                severity = trends.get("severity", "N/A")
-                is_critical = severity.lower() in ["high", "critical"]
-                
-                # Display severity with conditional styling
-                if is_critical:
-                    col1.markdown(f"""
-                    <div>
-                        <p style="margin: 0; font-size: 0.875rem; color: #666;">Severity</p>
-                        <p style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #dc3545;">{severity}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    col1.metric("Severity", severity)
+            st.caption(f"Forecasted {metric_name.lower()} and trend")
+            st.line_chart(
+                forecast_df.set_index("ds")[["yhat", "trend"]],
+                use_container_width=True,
+                x_label="Timestamp",
+                y_label=f"{metric_name} ({get_metric_unit(metric_name)})",
+            )
+            
+            # --- Send to AI ---
+            with st.spinner("🤖 Analyzing trends via AI... (this may take up to 60 seconds)"):
+                trends = analyze_trends(
+                    data, value_column=value_column, metric_name=metric_name
+                )
+                st.markdown("### Trend Analysis Summary")
+                if trends:
+                    col1, col2, col3, col4 = st.columns(4)
                     
-                col2.metric("Lead Time (days)", trends.get("lead_time_days", "N/A"))
-
-                # Dynamic metric names for breach values
-                breach_key = (
-                    f"predicted_{metric_name.lower().replace(' ', '_')}_at_breach"
-                )
-                if breach_key in trends:
-                    col3.metric(
-                        f"{metric_name} at Breach",
-                        f"{safe_float_convert(trends.get(breach_key, 0)):.2f}{get_metric_unit(metric_name)}",
-                    )
-                else:
-                    # Fallback to old naming for compatibility
-                    col3.metric(
-                        f"{metric_name} at Breach",
-                        f"{safe_float_convert(trends.get('cpu_at_breach', 0)):.2f}{get_metric_unit(metric_name)}",
-                    )
-
-                col4.metric(
-                    "Confidence (%)", f"{safe_float_convert(trends.get('confidence', 0)):.2f}"
-                )
-                
-                # Display summary with conditional styling
-                summary = trends.get("summary", "")
-                if is_critical:
-                    st.markdown(f"""
-                    <div style="padding: 1rem; border-radius: 0.5rem; background-color: #fee; border-left: 4px solid #dc3545; margin: 1rem 0;">
-                        <p style="margin: 0; color: #dc3545; font-weight: 500;">{summary}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.info(summary)
-                with st.expander(f"Explanation and Recommendation"):
-                    st.markdown(
-                        f"""
-                    <div style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
-                                border-radius: 12px; padding: 1.2em 1.5em; margin-bottom: 1em; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                        <h4 style="color:#2b5876; margin-top:0;">Explanation</h4>
-                        <p style="font-size:1.05em; color:#333;">{trends.get("justification", "No explanation available.")}</p>
-                        <h4 style="color:#2b5876; margin-bottom:0;">Recommendation</h4>
-                        <p style="font-size:1.05em; color:#333;">{trends.get("action", "No recommendation available.")}</p>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.warning("⚠️ Trend analysis is not available. The forecast chart above shows the mathematical prediction.")
-
-        # --------------------------------------------------------------------------
-
-        # Anomaly Detection
-        st.markdown("---")
-        st.subheader("Anomaly Detection")
-
-        # --- Anomaly chart ---
-        anom_df = detect_anomalies_iso(data, value_column=value_column)
-        st.caption(f"Detected anomalies (red dots) in {metric_name.lower()}")
-        base = (
-            alt.Chart(anom_df)
-            .mark_line()
-            .encode(
-                x=alt.X("timestamp:T", title="Timestamp"),
-                y=alt.Y("y:Q", title=f"{metric_name} ({get_metric_unit(metric_name)})"),
-                tooltip=["timestamp", "y"],
-            )
-        )
-        anom_points = (
-            alt.Chart(anom_df[anom_df["anomaly"] == -1])
-            .mark_point(color="red", size=60)
-            .encode(
-                x=alt.X("timestamp:T", title="Timestamp"),
-                y=alt.Y("y:Q", title=f"{metric_name} ({get_metric_unit(metric_name)})"),
-                tooltip=["timestamp", "y", "anomaly_score"],
-            )
-        )
-        st.altair_chart(
-            (base + anom_points).properties(title=f"{metric_name} & Anomalies"),
-            use_container_width=True,
-        )
-
-        # --- Send to AI ---
-        with st.spinner("🤖 Analyzing anomalies via AI... (this may take up to 60 seconds)"):
-            anomalies = detect_anomalies(
-                data, value_column=value_column, metric_name=metric_name
-            )
-            st.markdown("### Anomaly Detection Summary")
-            if anomalies:
-                col1, col2, col3, col4 = st.columns(4)
-                
-                # Check severity level for styling
-                severity = anomalies.get("severity", "N/A")
-                is_critical = severity.lower() in ["high", "critical"]
-                
-                # Display severity with conditional styling
-                if is_critical:
-                    col1.markdown(f"""
-                    <div>
-                        <p style="margin: 0; font-size: 0.875rem; color: #666;">Severity</p>
-                        <p style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #dc3545;">{severity}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    col1.metric("Severity", severity)
+                    # Check severity level for styling
+                    severity = trends.get("severity", "N/A")
+                    is_critical = severity.lower() in ["high", "critical"]
                     
-                col2.metric(
-                    "Total Anomalies (24h)",
-                    anomalies.get("total_anomalies_last_24", "N/A"),
-                )
+                    # Display severity with conditional styling
+                    if is_critical:
+                        col1.markdown(f"""
+                        <div>
+                            <p style="margin: 0; font-size: 0.875rem; color: #666;">Severity</p>
+                            <p style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #dc3545;">{severity}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        col1.metric("Severity", severity)
+                        
+                    col2.metric("Lead Time (days)", trends.get("lead_time_days", "N/A"))
 
-                # Dynamic metric names for worst values
-                worst_key = (
-                    f"worst_{metric_name.lower().replace(' ', '_')}_value_last_24h"
-                )
-                if worst_key in anomalies:
-                    col3.metric(
-                        f"Worst {metric_name}",
-                        f"{safe_float_convert(anomalies.get(worst_key, 0)):.2f}{get_metric_unit(metric_name)}",
+                    # Dynamic metric names for breach values
+                    breach_key = (
+                        f"predicted_{metric_name.lower().replace(' ', '_')}_at_breach"
                     )
+                    if breach_key in trends:
+                        col3.metric(
+                            f"{metric_name} at Breach",
+                            f"{safe_float_convert(trends.get(breach_key, 0)):.2f}{get_metric_unit(metric_name)}",
+                        )
+                    else:
+                        # Fallback to old naming for compatibility
+                        col3.metric(
+                            f"{metric_name} at Breach",
+                            f"{safe_float_convert(trends.get('cpu_at_breach', 0)):.2f}{get_metric_unit(metric_name)}",
+                        )
+
+                    col4.metric(
+                        "Confidence (%)", f"{safe_float_convert(trends.get('confidence', 0)):.2f}"
+                    )
+                    
+                    # Display summary with conditional styling
+                    summary = trends.get("summary", "")
+                    if is_critical:
+                        st.markdown(f"""
+                        <div style="padding: 1rem; border-radius: 0.5rem; background-color: #fee; border-left: 4px solid #dc3545; margin: 1rem 0;">
+                            <p style="margin: 0; color: #dc3545; font-weight: 500;">{summary}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.info(summary)
+                    with st.expander(f"Explanation and Recommendation"):
+                        st.markdown(
+                            f"""
+                        <div style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
+                                    border-radius: 12px; padding: 1.2em 1.5em; margin-bottom: 1em; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                            <h4 style="color:#2b5876; margin-top:0;">Explanation</h4>
+                            <p style="font-size:1.05em; color:#333;">{trends.get("justification", "No explanation available.")}</p>
+                            <h4 style="color:#2b5876; margin-bottom:0;">Recommendation</h4>
+                            <p style="font-size:1.05em; color:#333;">{trends.get("action", "No recommendation available.")}</p>
+                        </div>
+                        """,
+                            unsafe_allow_html=True,
+                        )
                 else:
-                    # Fallback to old naming for compatibility
-                    col3.metric(
-                        f"Worst {metric_name}",
-                        f"{safe_float_convert(anomalies.get('worst_cpu_pct_last_24h', 0)):.2f}{get_metric_unit(metric_name)}",
+                    st.warning("⚠️ Trend analysis is not available. The forecast chart above shows the mathematical prediction.")
+
+            # --------------------------------------------------------------------------
+
+            # Anomaly Detection
+            st.markdown("---")
+            st.subheader("Anomaly Detection")
+
+            # --- Anomaly chart ---
+            anom_df = detect_anomalies_iso(data, value_column=value_column)
+            st.caption(f"Detected anomalies (red dots) in {metric_name.lower()}")
+            base = (
+                alt.Chart(anom_df)
+                .mark_line()
+                .encode(
+                    x=alt.X("timestamp:T", title="Timestamp"),
+                    y=alt.Y("y:Q", title=f"{metric_name} ({get_metric_unit(metric_name)})"),
+                    tooltip=["timestamp", "y"],
+                )
+            )
+            anom_points = (
+                alt.Chart(anom_df[anom_df["anomaly"] == -1])
+                .mark_point(color="red", size=60)
+                .encode(
+                    x=alt.X("timestamp:T", title="Timestamp"),
+                    y=alt.Y("y:Q", title=f"{metric_name} ({get_metric_unit(metric_name)})"),
+                    tooltip=["timestamp", "y", "anomaly_score"],
+                )
+            )
+            st.altair_chart(
+                (base + anom_points).properties(title=f"{metric_name} & Anomalies"),
+                use_container_width=True,
+            )
+
+            # --- Send to AI ---
+            with st.spinner("🤖 Analyzing anomalies via AI... (this may take up to 60 seconds)"):
+                anomalies = detect_anomalies(
+                    data, value_column=value_column, metric_name=metric_name
+                )
+                st.markdown("### Anomaly Detection Summary")
+                if anomalies:
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    # Check severity level for styling
+                    severity = anomalies.get("severity", "N/A")
+                    is_critical = severity.lower() in ["high", "critical"]
+                    
+                    # Display severity with conditional styling
+                    if is_critical:
+                        col1.markdown(f"""
+                        <div>
+                            <p style="margin: 0; font-size: 0.875rem; color: #666;">Severity</p>
+                            <p style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #dc3545;">{severity}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        col1.metric("Severity", severity)
+                        
+                    col2.metric(
+                        "Total Anomalies (24h)",
+                        anomalies.get("total_anomalies_last_24", "N/A"),
                     )
 
-                col4.metric(
-                    "Confidence (%)", f"{safe_float_convert(anomalies.get('confidence', 0)):.2f}"
-                )
-                
-                # Display summary with conditional styling
-                summary = anomalies.get("summary", "")
-                if is_critical:
-                    st.markdown(f"""
-                    <div style="padding: 1rem; border-radius: 0.5rem; background-color: #fee; border-left: 4px solid #dc3545; margin: 1rem 0;">
-                        <p style="margin: 0; color: #dc3545; font-weight: 500;">{summary}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.info(summary)
-                with st.expander(f"Explanation and Recommendation"):
-                    st.markdown(
-                        f"""
-                    <div style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
-                                border-radius: 12px; padding: 1.2em 1.5em; margin-bottom: 1em; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                        <h4 style="color:#2b5876; margin-top:0;">Explanation</h4>
-                        <p style="font-size:1.05em; color:#333;">{anomalies.get("justification", "No explanation available.")}</p>
-                        <h4 style="color:#2b5876; margin-bottom:0;">Recommendation</h4>
-                        <p style="font-size:1.05em; color:#333;">{anomalies.get("action", "No recommendation available.")}</p>
-                    </div>
-                    """,
-                        unsafe_allow_html=True,
+                    # Dynamic metric names for worst values
+                    worst_key = (
+                        f"worst_{metric_name.lower().replace(' ', '_')}_value_last_24h"
                     )
+                    if worst_key in anomalies:
+                        col3.metric(
+                            f"Worst {metric_name}",
+                            f"{safe_float_convert(anomalies.get(worst_key, 0)):.2f}{get_metric_unit(metric_name)}",
+                        )
+                    else:
+                        # Fallback to old naming for compatibility
+                        col3.metric(
+                            f"Worst {metric_name}",
+                            f"{safe_float_convert(anomalies.get('worst_cpu_pct_last_24h', 0)):.2f}{get_metric_unit(metric_name)}",
+                        )
+
+                    col4.metric(
+                        "Confidence (%)", f"{safe_float_convert(anomalies.get('confidence', 0)):.2f}"
+                    )
+                    
+                    # Display summary with conditional styling
+                    summary = anomalies.get("summary", "")
+                    if is_critical:
+                        st.markdown(f"""
+                        <div style="padding: 1rem; border-radius: 0.5rem; background-color: #fee; border-left: 4px solid #dc3545; margin: 1rem 0;">
+                            <p style="margin: 0; color: #dc3545; font-weight: 500;">{summary}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.info(summary)
+                    with st.expander(f"Explanation and Recommendation"):
+                        st.markdown(
+                            f"""
+                        <div style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
+                                    border-radius: 12px; padding: 1.2em 1.5em; margin-bottom: 1em; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                            <h4 style="color:#2b5876; margin-top:0;">Explanation</h4>
+                            <p style="font-size:1.05em; color:#333;">{anomalies.get("justification", "No explanation available.")}</p>
+                            <h4 style="color:#2b5876; margin-bottom:0;">Recommendation</h4>
+                            <p style="font-size:1.05em; color:#333;">{anomalies.get("action", "No recommendation available.")}</p>
+                        </div>
+                        """,
+                            unsafe_allow_html=True,
+                        )
+                else:
+                    st.warning("Anomaly analysis is not available. The chart above shows detected anomalies using mathematical methods.", icon="⚠️")
+
+            # --------------------------------------------------------------------------
+
+            # Insert AI results into prediction record
+            if trends or anomalies:
+                with st.spinner("💾 Saving prediction record to database..."):
+                    try:
+                        prediction_record = ai_to_prediction_record(
+                            host or "Unknown",
+                            metric_name or metric or "Unknown",
+                            {"trends": trends, "anomalies": anomalies},
+                        )
+                        insert_prediction(prediction_record)
+                        st.success("Analysis results saved successfully!", icon="✅")
+                    except Exception as e:
+                        st.error(f"Failed to save results: {str(e)}", icon="⚠️")
             else:
-                st.warning("Anomaly analysis is not available. The chart above shows detected anomalies using mathematical methods.", icon="⚠️")
-
-        # --------------------------------------------------------------------------
-
-        # Insert AI results into prediction record
-        if trends or anomalies:
-            with st.spinner("💾 Saving prediction record to database..."):
-                try:
-                    prediction_record = ai_to_prediction_record(
-                        st.session_state.selected_host or "Unknown",
-                        st.session_state.metric_name
-                        or st.session_state.selected_metric
-                        or "Unknown",
-                        {"trends": trends, "anomalies": anomalies},
-                    )
-                    insert_prediction(prediction_record)
-                    st.success("Analysis results saved successfully!", icon="✅")
-                except Exception as e:
-                    st.error(f"Failed to save results: {str(e)}", icon="⚠️")
-        else:
-            st.info("No AI analysis results to save (AI service may be unavailable).", icon="ℹ️")
-
+                st.info("No AI analysis results to save (AI service may be unavailable).", icon="ℹ️")
+    else:
+        st.info("Please click 'Run AI Analysis' to fetch data and analyze it.", icon="👆")
 with tab2:
     # Display saved predictions as a table via fetch_predictions function
     saved_predictions = fetch_predictions()
